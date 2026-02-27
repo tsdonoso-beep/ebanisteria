@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MSE-SFT Ebanistería | Plataforma de Capacitación Docente 150h</title>
+  <meta name="description" content="Plataforma de capacitación 150 horas para docentes de Ebanistería EpT — PRONIED MINEDU">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+<!-- HEADER INSTITUCIONAL -->
+<header class="header-inst">
+  <div class="logo-area">
+    <div>
+      <h1>MSE-SFT Ebanistería</h1>
+      <span>Capacitación Docente 150h · PRONIED / MINEDU</span>
+    </div>
+  </div>
+  <nav id="main-nav">
+    <a href="index.html" class="active">Inicio</a>
+    <a href="modulo1.html">M1 Inducción</a>
+    <a href="modulo2.html">M2 Investigación</a>
+    <a href="modulo3.html">M3 Innovación</a>
+    <a href="modulo4.html">M4 Almacén</a>
+    <a href="modulo5.html">M5 Pedagogía</a>
+    <a href="actividades.html">Integradoras</a>
+  </nav>
+</header>
+
+<!-- MAIN CONTENT -->
+<main class="p-page" style="display:flex;flex-direction:column;gap:24px;">
+
+  <!-- HERO SECTION -->
+  <section class="card" style="padding:0;overflow:hidden;">
+    <div style="background:linear-gradient(135deg,#B71C1C 0%,#7F0000 60%,#1565C0 100%);color:white;padding:40px 32px;position:relative;overflow:hidden;">
+      <div style="position:absolute;right:-40px;top:-40px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,0.06);"></div>
+      <div style="position:absolute;right:80px;bottom:-60px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,0.04);"></div>
+      <span class="mod-badge" style="background:rgba(255,255,255,0.15);color:white;margin-bottom:12px;display:inline-flex;">📐 Programa Formativo</span>
+      <h2 style="font-size:32px;font-weight:900;letter-spacing:-1px;margin-bottom:8px;position:relative;z-index:1;">Taller de Ebanistería — Educación para el Trabajo</h2>
+      <p style="opacity:0.85;max-width:700px;font-size:15px;position:relative;z-index:1;">Plataforma de capacitación de 150 horas pedagógicas para docentes de secundaria. Reconocimiento, operación y mantenimiento de equipos, herramientas, maquinaria y software del taller de ebanistería.</p>
+      <div style="display:flex;gap:16px;margin-top:20px;position:relative;z-index:1;">
+        <div style="background:rgba(255,255,255,0.12);padding:12px 20px;border-radius:8px;backdrop-filter:blur(4px);">
+          <div style="font-size:24px;font-weight:900;" id="total-bienes-count">68</div>
+          <div style="font-size:11px;opacity:0.8;">Bienes Inventariados</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.12);padding:12px 20px;border-radius:8px;backdrop-filter:blur(4px);">
+          <div style="font-size:24px;font-weight:900;">5</div>
+          <div style="font-size:11px;opacity:0.8;">Módulos</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.12);padding:12px 20px;border-radius:8px;backdrop-filter:blur(4px);">
+          <div style="font-size:24px;font-weight:900;">150h</div>
+          <div style="font-size:11px;opacity:0.8;">Programa</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.12);padding:12px 20px;border-radius:8px;backdrop-filter:blur(4px);">
+          <div style="font-size:24px;font-weight:900;" id="iperc-count">24</div>
+          <div style="font-size:11px;opacity:0.8;">Fichas IPERC</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FILTRO POR GRADO + ISOMÉTRICO -->
+  <section>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3 style="font-size:18px;font-weight:800;">🏭 Vista Isométrica del Taller</h3>
+      <div class="grade-filter" id="grade-filter"></div>
+    </div>
+    <div class="iso-container">
+      <div class="iso-svg-area" id="iso-area">
+        <svg viewBox="0 0 1200 600" id="iso-svg" style="width:100%;height:100%;">
+          <!-- Floor grid -->
+          <defs>
+            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#B0BEC5" stroke-width="0.5"/>
+            </pattern>
+          </defs>
+          <rect width="1200" height="600" fill="url(#grid)"/>
+          <!-- Workshop outline -->
+          <path d="M100,450 L100,100 L1100,100 L1100,450 Z" fill="none" stroke="#78909C" stroke-width="2" stroke-dasharray="8,4"/>
+          <!-- Zone labels -->
+          <text x="150" y="90" font-size="11" fill="#546E7A" font-weight="700">ZONA MAQUINARIA PESADA (M3)</text>
+          <text x="600" y="90" font-size="11" fill="#546E7A" font-weight="700">ZONA MEDICIÓN (M2)</text>
+          <text x="900" y="90" font-size="11" fill="#546E7A" font-weight="700">ZONA ACABADO (M4)</text>
+          <!-- Equipment hotspots will be rendered by JS -->
+        </svg>
+        <div style="position:absolute;bottom:12px;left:12px;background:rgba(255,255,255,0.9);padding:8px 14px;border-radius:8px;font-size:11px;font-weight:600;color:#546E7A;backdrop-filter:blur(4px);">
+          <i data-lucide="info" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i>
+          Haz clic en un equipo para ver: Manual + Video + Mantenimiento + IPERC
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MÓDULOS -->
+  <section>
+    <h3 style="font-size:18px;font-weight:800;margin-bottom:16px;">📚 Módulos del Programa</h3>
+    <div class="grid-5" id="modules-grid">
+      <!-- Rendered by JS -->
+    </div>
+  </section>
+
+  <!-- BÚSQUEDA RÁPIDA DE BIENES -->
+  <section class="card">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+      <i data-lucide="search" style="width:20px;height:20px;color:var(--text-muted);"></i>
+      <input type="text" id="search-input" placeholder="Buscar bien por nombre, código o marca (ej: 'sierra', 'HER-08', 'Holzstar')..." style="flex:1;border:1px solid var(--border);border-radius:8px;padding:12px 16px;font-size:14px;font-family:'Inter',sans-serif;outline:none;" />
+    </div>
+    <div id="search-results" class="grid-3" style="display:none;"></div>
+  </section>
+
+  <!-- BIENES POR MÓDULO -->
+  <section id="bienes-section" style="display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3 style="font-size:18px;font-weight:800;" id="bienes-section-title">Bienes</h3>
+      <button onclick="closeBienesSection()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:600;">✕ Cerrar</button>
+    </div>
+    <div id="bienes-grid" class="grid-3"></div>
+  </section>
+
+</main>
+
+<!-- DETAIL PANEL (slide-in) -->
+<div class="overlay" id="overlay" onclick="closeDetail()"></div>
+<div class="detail-panel" id="detail-panel"></div>
+
+<!-- CHATBOT -->
+<button class="chatbot-fab" id="chatbot-fab" onclick="toggleChat()">
+  <i data-lucide="message-circle" style="width:24px;height:24px;"></i>
+</button>
+<div class="chatbot-window" id="chatbot-window">
+  <div class="chatbot-header">
+    <div style="width:36px;height:36px;background:rgba(255,255,255,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;">🪵</div>
+    <div>
+      <h4>Ebanista IA</h4>
+      <span>Consulta equipos, manuales y ubicaciones</span>
+    </div>
+  </div>
+  <div class="chatbot-messages" id="chat-messages">
+    <div class="chat-msg bot">¡Hola! Soy el Ebanista IA. Pregúntame sobre cualquier equipo del taller: ubicación, manual de uso, mantenimiento o seguridad IPERC. 🪵</div>
+  </div>
+  <div class="chatbot-input">
+    <input type="text" id="chat-input" placeholder="Escribe tu consulta..." onkeydown="if(event.key==='Enter')sendChat()">
+    <button onclick="sendChat()">Enviar</button>
+  </div>
+</div>
+
+<script>
+// ==========================================
+//  AGENTE CUSTODIO DE DATOS — Carga JSON
+// ==========================================
+let DB = { bienes: [] };
+
+async function loadDB() {
+  try {
+    const res = await fetch('principios_operacion.json');
+    DB = await res.json();
+    document.getElementById('total-bienes-count').textContent = DB.bienes.length;
+    const ipercCount = DB.bienes.filter(b => b.iperc).length;
+    document.getElementById('iperc-count').textContent = ipercCount;
+    renderAll();
+  } catch(e) {
+    console.warn('JSON not loaded via fetch, using inline fallback');
+    renderAll();
+  }
+}
+
+// ==========================================
+//  AGENTE ARQUITECTO — Navegación y Filtros
+// ==========================================
+const MODULES = [
+  { id:'M1', name:'Inducción', icon:'🏭', hours:15, color:'m1', desc:'Zonificación, isométrico, inventario', link:'modulo1.html' },
+  { id:'M2', name:'Investigación', icon:'🔬', hours:35, color:'m2', desc:'Medición, análisis de madera, uniones', link:'modulo2.html' },
+  { id:'M3', name:'Innovación', icon:'⚙️', hours:40, color:'m3', desc:'Maquinaria, CNC, simuladores', link:'modulo3.html' },
+  { id:'M4', name:'Almacén', icon:'📦', hours:35, color:'m4', desc:'Enchapado, aspiración, IPERC', link:'modulo4.html' },
+  { id:'M5', name:'Pedagogía', icon:'🎓', hours:25, color:'m5', desc:'Design Thinking, quizzes', link:'modulo5.html' }
+];
+
+let selectedGrade = 0; // 0 = all
+
+function renderAll() {
+  renderGradeFilter();
+  renderModules();
+  renderIsometric();
+  lucide.createIcons();
+}
+
+function renderGradeFilter() {
+  const container = document.getElementById('grade-filter');
+  const grades = [
+    { g: 0, label: 'Todos' },
+    { g: 1, label: '1° Grado' },
+    { g: 2, label: '2° Grado' },
+    { g: 3, label: '3° Grado' },
+    { g: 4, label: '4° Grado' },
+    { g: 5, label: '5° Grado' }
+  ];
+  container.innerHTML = grades.map(gr =>
+    `<button class="grade-btn ${selectedGrade === gr.g ? 'active' : ''}" onclick="setGrade(${gr.g})">${gr.label}</button>`
+  ).join('');
+}
+
+function setGrade(g) {
+  selectedGrade = g;
+  renderGradeFilter();
+  renderIsometric();
+}
+
+function renderModules() {
+  const grid = document.getElementById('modules-grid');
+  grid.innerHTML = MODULES.map(m => {
+    const count = DB.bienes.filter(b => b.modulo === m.id).length;
+    return `
+      <div class="card module-card" onclick="showModuleBienes('${m.id}')">
+        <div class="mc-header ${m.color}-header">
+          <h3>${m.icon} ${m.id}</h3>
+          <p>${m.name}</p>
+        </div>
+        <div class="mc-body">
+          <div style="font-size:12px;color:var(--text-secondary);">${m.desc}</div>
+          <div class="mc-stats">
+            <div class="mc-stat"><strong>${m.hours}h</strong>Horas</div>
+            <div class="mc-stat"><strong>${count}</strong>Bienes</div>
+          </div>
+          <div class="progress-bar" style="margin-top:12px;">
+            <div class="fill" style="width:0%;background:var(--${m.color});"></div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ==========================================
+//  AGENTE SIMULACIÓN Y UI — Isométrico SVG
+// ==========================================
+const ZONE_POSITIONS = {
+  M3: { x0: 120, x1: 520, y0: 120, y1: 420 },
+  M2: { x0: 540, x1: 840, y0: 120, y1: 420 },
+  M4: { x0: 860, x1: 1080, y0: 120, y1: 420 }
+};
+
+function renderIsometric() {
+  const svg = document.getElementById('iso-svg');
+  // Remove old hotspots
+  svg.querySelectorAll('.equip-group').forEach(el => el.remove());
+
+  const bienes = DB.bienes.filter(b => ['M2','M3','M4'].includes(b.modulo));
+  const groups = {};
+  bienes.forEach(b => {
+    if (!groups[b.modulo]) groups[b.modulo] = [];
+    groups[b.modulo].push(b);
+  });
+
+  Object.entries(groups).forEach(([mod, items]) => {
+    const zone = ZONE_POSITIONS[mod] || ZONE_POSITIONS.M3;
+    const cols = Math.ceil(Math.sqrt(items.length));
+    const cellW = (zone.x1 - zone.x0) / cols;
+    const cellH = (zone.y1 - zone.y0) / Math.ceil(items.length / cols);
+
+    items.forEach((item, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const cx = zone.x0 + col * cellW + cellW / 2;
+      const cy = zone.y0 + row * cellH + cellH / 2;
+
+      const isVisible = selectedGrade === 0 || (item.grados && item.grados.includes(selectedGrade));
+      const hasIperc = item.iperc !== null;
+      const modColor = mod === 'M2' ? '#0277BD' : mod === 'M3' ? '#2E7D32' : '#6A1B9A';
+
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.classList.add('equip-group', 'iso-hotspot');
+      if (!isVisible) g.classList.add('dimmed');
+      if (isVisible && selectedGrade > 0) g.classList.add('highlight');
+      g.style.cursor = 'pointer';
+      g.onclick = () => openDetail(item.id);
+
+      g.innerHTML = `
+        <rect x="${cx-18}" y="${cy-14}" width="36" height="28" rx="4" fill="${modColor}" opacity="0.85"/>
+        ${hasIperc ? `<circle cx="${cx+14}" cy="${cy-10}" r="5" fill="#FF6F00"/>` : ''}
+        <text x="${cx}" y="${cy+2}" text-anchor="middle" font-size="8" fill="white" font-weight="700">${item.id.split('-')[0]}</text>
+        <text x="${cx}" y="${cy+26}" text-anchor="middle" font-size="7" fill="#546E7A" font-weight="600">${item.nombre.substring(0,16)}</text>
+      `;
+      svg.appendChild(g);
+    });
+  });
+}
+
+// ==========================================
+//  DETAIL PANEL — Manual + Video + IPERC
+// ==========================================
+function openDetail(id) {
+  const bien = DB.bienes.find(b => b.id === id);
+  if (!bien) return;
+  const panel = document.getElementById('detail-panel');
+  const overlay = document.getElementById('overlay');
+  const modColor = bien.modulo === 'M1' ? 'var(--m1)' : bien.modulo === 'M2' ? 'var(--m2)' : bien.modulo === 'M3' ? 'var(--m3)' : bien.modulo === 'M4' ? 'var(--m4)' : 'var(--m5)';
+  const modGrad = bien.modulo === 'M2' ? 'linear-gradient(135deg,#0277BD,#01579B)' : bien.modulo === 'M3' ? 'linear-gradient(135deg,#2E7D32,#1B5E20)' : bien.modulo === 'M4' ? 'linear-gradient(135deg,#6A1B9A,#4A148C)' : 'linear-gradient(135deg,#FF6F00,#E65100)';
+
+  panel.innerHTML = `
+    <div class="dp-header" style="background:${modGrad};">
+      <button class="dp-close" onclick="closeDetail()">✕</button>
+      <span class="mod-badge" style="background:rgba(255,255,255,0.2);color:white;">${bien.modulo} · ${bien.categoria}</span>
+      <h2 style="font-size:22px;font-weight:800;margin-top:8px;">${bien.nombre}</h2>
+      <p style="opacity:0.85;font-size:13px;margin-top:4px;"><span class="mono">${bien.id}</span> · ${bien.brand_model}</p>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+        ${bien.grados ? bien.grados.map(g => `<span style="background:rgba(255,255,255,0.2);padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;">${g}° Grado</span>`).join('') : ''}
+      </div>
+    </div>
+
+    <div class="dp-section">
+      <h4>⚡ Principios de Funcionamiento</h4>
+      <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;">${bien.principles}</p>
+    </div>
+
+    <div class="dp-section">
+      <h4>📖 Manual de Operatividad</h4>
+      <p style="font-size:13px;color:var(--text-primary);line-height:1.7;">${bien.manuals.operatividad}</p>
+    </div>
+
+    <div class="dp-section">
+      <h4>🔧 Manual de Mantenimiento</h4>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div style="background:#F5F5F5;padding:10px;border-radius:8px;">
+          <div style="font-size:10px;color:var(--text-muted);font-weight:700;text-transform:uppercase;">Limpieza</div>
+          <div style="font-size:12px;margin-top:4px;">${bien.manuals.mantenimiento.limpieza}</div>
+        </div>
+        <div style="background:#F5F5F5;padding:10px;border-radius:8px;">
+          <div style="font-size:10px;color:var(--text-muted);font-weight:700;text-transform:uppercase;">Lubricación</div>
+          <div style="font-size:12px;margin-top:4px;">${bien.manuals.mantenimiento.lubricacion}</div>
+        </div>
+        <div style="background:#F5F5F5;padding:10px;border-radius:8px;">
+          <div style="font-size:10px;color:var(--text-muted);font-weight:700;text-transform:uppercase;">Afilado</div>
+          <div style="font-size:12px;margin-top:4px;">${bien.manuals.mantenimiento.afilado}</div>
+        </div>
+        <div style="background:#F5F5F5;padding:10px;border-radius:8px;">
+          <div style="font-size:10px;color:var(--text-muted);font-weight:700;text-transform:uppercase;">Calibración</div>
+          <div style="font-size:12px;margin-top:4px;">${bien.manuals.mantenimiento.calibracion}</div>
+        </div>
+      </div>
+    </div>
+
+    ${bien.guion && bien.guion !== 'N/A' ? `
+    <div class="dp-section">
+      <h4>🎬 Video Tutorial</h4>
+      <div style="background:#ECEFF1;padding:16px;border-radius:8px;text-align:center;">
+        <div style="font-size:24px;margin-bottom:8px;">📹</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text-primary);">${bien.guion}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Video tutorial disponible en USB de capacitación</div>
+      </div>
+    </div>` : ''}
+
+    ${bien.iperc ? `
+    <div class="dp-section">
+      <h4>⚠️ Campo IPERC</h4>
+      <div class="iperc-section">
+        <div style="font-size:11px;font-weight:700;color:#E65100;margin-bottom:6px;">PELIGROS</div>
+        <div>${bien.iperc.peligros.map(p => `<span class="iperc-tag">${p}</span>`).join('')}</div>
+        <div style="font-size:11px;font-weight:700;color:#C62828;margin:8px 0 6px;">RIESGOS</div>
+        <div>${bien.iperc.riesgos.map(r => `<span class="iperc-tag" style="background:#FFCDD2;color:#C62828;">${r}</span>`).join('')}</div>
+        <div style="font-size:11px;font-weight:700;color:#2E7D32;margin:8px 0 6px;">CONTROLES</div>
+        <div>${bien.iperc.controles.map(c => `<span class="iperc-control">${c}</span>`).join('')}</div>
+      </div>
+    </div>` : ''}
+
+    ${bien.simulador ? `
+    <div class="dp-section">
+      <h4>🎮 Simulador Requerido</h4>
+      <div style="background:#E8F5E9;border:2px solid #C8E6C9;padding:14px;border-radius:8px;text-align:center;">
+        <div style="font-size:13px;font-weight:700;color:#2E7D32;">✅ Este equipo requiere simulación virtual previa</div>
+        <div style="font-size:11px;color:#388E3C;margin-top:4px;">Complete la simulación en el módulo ${bien.modulo} antes de la actividad presencial</div>
+      </div>
+    </div>` : ''}
+
+    <div style="padding:16px 24px;text-align:right;">
+      <span style="font-size:10px;color:var(--text-muted);font-weight:600;">MSE-SFT Ebanistería v7.0 · PRONIED</span>
+    </div>
+  `;
+  panel.classList.add('open');
+  overlay.classList.add('open');
+}
+
+function closeDetail() {
+  document.getElementById('detail-panel').classList.remove('open');
+  document.getElementById('overlay').classList.remove('open');
+}
+
+// ==========================================
+//  MODULE BIENES VIEW
+// ==========================================
+function showModuleBienes(modId) {
+  const section = document.getElementById('bienes-section');
+  const grid = document.getElementById('bienes-grid');
+  const title = document.getElementById('bienes-section-title');
+  const mod = MODULES.find(m => m.id === modId);
+  const bienes = DB.bienes.filter(b => b.modulo === modId);
+
+  title.textContent = `${mod.icon} ${mod.name} — ${bienes.length} Bienes`;
+  grid.innerHTML = bienes.map(b => `
+    <div class="card" style="cursor:pointer;border-left:4px solid var(--${mod.color});" onclick="openDetail('${b.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div style="font-size:14px;font-weight:700;">${b.nombre}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;" class="mono">${b.id} · ${b.brand_model}</div>
+        </div>
+        <div style="display:flex;gap:4px;">
+          ${b.iperc ? '<span style="background:#FFF3E0;color:#E65100;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;">IPERC</span>' : ''}
+          ${b.simulador ? '<span style="background:#E8F5E9;color:#2E7D32;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;">SIM</span>' : ''}
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-top:8px;">${b.principles}</div>
+      <div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap;">
+        ${b.grados ? b.grados.map(g => `<span style="background:#F5F5F5;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;">${g}°</span>`).join('') : ''}
+      </div>
+    </div>
+  `).join('');
+  section.style.display = 'block';
+  section.scrollIntoView({ behavior: 'smooth' });
+}
+
+function closeBienesSection() {
+  document.getElementById('bienes-section').style.display = 'none';
+}
+
+// ==========================================
+//  SEARCH
+// ==========================================
+const searchInput = document.getElementById('search-input');
+const searchResults = document.getElementById('search-results');
+
+searchInput.addEventListener('input', (e) => {
+  const q = e.target.value.toLowerCase().trim();
+  if (q.length < 2) { searchResults.style.display = 'none'; return; }
+  const results = DB.bienes.filter(b =>
+    b.nombre.toLowerCase().includes(q) ||
+    b.id.toLowerCase().includes(q) ||
+    b.brand_model.toLowerCase().includes(q) ||
+    b.principles.toLowerCase().includes(q) ||
+    b.categoria.toLowerCase().includes(q)
+  ).slice(0, 9);
+
+  if (results.length === 0) {
+    searchResults.innerHTML = '<div class="card" style="grid-column:1/-1;text-align:center;color:var(--text-muted);">No se encontraron bienes</div>';
+  } else {
+    searchResults.innerHTML = results.map(b => `
+      <div class="card" style="cursor:pointer;padding:14px;" onclick="openDetail('${b.id}')">
+        <div style="font-size:13px;font-weight:700;">${b.nombre}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:2px;" class="mono">${b.id} · ${b.brand_model}</div>
+        <span class="mod-badge ${b.modulo.toLowerCase()}" style="margin-top:6px;">${b.modulo}</span>
+      </div>
+    `).join('');
+  }
+  searchResults.style.display = 'grid';
+});
+
+// ==========================================
+//  AGENTE MENTOR PEDAGÓGICO — Chatbot IA
+// ==========================================
+function toggleChat() {
+  document.getElementById('chatbot-window').classList.toggle('open');
+}
+
+function sendChat() {
+  const input = document.getElementById('chat-input');
+  const q = input.value.trim();
+  if (!q) return;
+  addMsg(q, 'user');
+  input.value = '';
+  setTimeout(() => processQuery(q), 300);
+}
+
+function addMsg(text, type) {
+  const messages = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = `chat-msg ${type} fade-in`;
+  div.innerHTML = text;
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function processQuery(q) {
+  const lower = q.toLowerCase();
+  // Search by name, id, brand, category
+  const matches = DB.bienes.filter(b =>
+    b.nombre.toLowerCase().includes(lower) ||
+    b.id.toLowerCase().includes(lower) ||
+    b.brand_model.toLowerCase().includes(lower) ||
+    b.principles.toLowerCase().includes(lower)
+  );
+
+  if (matches.length > 0) {
+    const b = matches[0];
+    let resp = `<strong>${b.nombre}</strong><br>`;
+    resp += `<span style="font-size:11px;opacity:0.7;">${b.id} · ${b.brand_model} · ${b.modulo}</span><br><br>`;
+    resp += `<strong>Principio:</strong> ${b.principles}<br><br>`;
+    resp += `<strong>Operación:</strong> ${b.manuals.operatividad}<br><br>`;
+    resp += `<strong>Mantenimiento:</strong> Limpieza: ${b.manuals.mantenimiento.limpieza}`;
+    if (b.iperc) {
+      resp += `<br><br>⚠️ <strong>IPERC:</strong> Peligros: ${b.iperc.peligros.join(', ')}. Controles: ${b.iperc.controles.join(', ')}`;
+    }
+    if (b.simulador) {
+      resp += `<br><br>🎮 <strong>Requiere simulación virtual previa</strong>`;
+    }
+    if (matches.length > 1) {
+      resp += `<br><br><em>+${matches.length - 1} resultados más. Sé más específico.</em>`;
+    }
+    addMsg(resp, 'bot');
+  } else if (lower.includes('módulo') || lower.includes('modulo')) {
+    const modMatch = lower.match(/m([1-5])/);
+    if (modMatch) {
+      const mod = MODULES.find(m => m.id === `M${modMatch[1]}`);
+      const count = DB.bienes.filter(b => b.modulo === mod.id).length;
+      addMsg(`<strong>${mod.icon} ${mod.id} — ${mod.name}</strong><br>${mod.desc}<br><br>${mod.hours} horas · ${count} bienes asignados`, 'bot');
+    } else {
+      addMsg('Tenemos 5 módulos: M1 Inducción, M2 Investigación, M3 Innovación, M4 Almacén, M5 Pedagogía. ¿Cuál te interesa?', 'bot');
+    }
+  } else if (lower.includes('grado') || lower.match(/[1-5]°/)) {
+    const gMatch = lower.match(/([1-5])/);
+    if (gMatch) {
+      const g = parseInt(gMatch[1]);
+      const items = DB.bienes.filter(b => b.grados && b.grados.includes(g));
+      addMsg(`En <strong>${g}° Grado</strong> se utilizan <strong>${items.length} bienes</strong>:<br><br>${items.slice(0,8).map(b => `• ${b.nombre} (${b.id})`).join('<br>')}${items.length > 8 ? `<br><em>...y ${items.length-8} más</em>` : ''}`, 'bot');
+    }
+  } else if (lower.includes('iperc') || lower.includes('seguridad') || lower.includes('peligro')) {
+    const ipercItems = DB.bienes.filter(b => b.iperc);
+    addMsg(`Tenemos <strong>${ipercItems.length} bienes con ficha IPERC</strong>. Los más críticos:<br><br>${ipercItems.slice(0,5).map(b => `⚠️ <strong>${b.nombre}</strong>: ${b.iperc.peligros.join(', ')}`).join('<br><br>')}`, 'bot');
+  } else if (lower.includes('simulador') || lower.includes('simulación')) {
+    const simItems = DB.bienes.filter(b => b.simulador);
+    addMsg(`<strong>${simItems.length} bienes requieren simulación virtual previa:</strong><br><br>${simItems.map(b => `🎮 ${b.nombre} (${b.modulo})`).join('<br>')}`, 'bot');
+  } else {
+    addMsg('No encontré resultados exactos. Intenta buscar por nombre de equipo (ej: "sierra cinta"), código (ej: "HER-08"), marca (ej: "Holzstar") o tema (ej: "IPERC", "simulador", "5° grado").', 'bot');
+  }
+}
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+  loadDB();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>M3 Innovación — Maquinaria y Fabricación Digital | MSE-SFT Ebanistería</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body>
+    <header class="header-inst">
+        <div class="logo-area">
+            <div>
+                <h1>MSE-SFT Ebanistería</h1><span>M3 · Innovación: Maquinaria y Fabricación Digital · 40h</span>
+            </div>
+        </div>
+        <nav><a href="index.html">Inicio</a><a href="modulo1.html">M1</a><a href="modulo2.html">M2</a><a
+                href="modulo3.html" class="active">M3</a><a href="modulo4.html">M4</a><a href="modulo5.html">M5</a><a
+                href="actividades.html">Integradoras</a></nav>
+    </header>
+
+    <main class="p-page" style="display:flex;flex-direction:column;gap:24px;">
+        <!-- Hero -->
+        <section class="card" style="padding:0;overflow:hidden;">
+            <div class="m3-header" style="padding:32px;color:white;position:relative;overflow:hidden;">
+                <div
+                    style="position:absolute;right:-30px;top:-30px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,0.06);">
+                </div>
+                <span class="mod-badge" style="background:rgba(255,255,255,0.2);color:white;">⚙️ Módulo 3</span>
+                <h2 style="font-size:28px;font-weight:900;margin-top:8px;">Innovación: Maquinaria y Fabricación Digital
+                </h2>
+                <p style="opacity:0.85;max-width:600px;margin-top:8px;">Operación de maquinaria pesada, CNC y
+                    fabricación digital. Simulación virtual obligatoria antes de práctica real.</p>
+                <div style="display:flex;gap:16px;margin-top:16px;">
+                    <div style="background:rgba(255,255,255,0.12);padding:10px 16px;border-radius:8px;"><strong
+                            style="font-size:20px;">40h</strong><br><span
+                            style="font-size:10px;opacity:0.8;">Horas</span></div>
+                    <div style="background:rgba(255,255,255,0.12);padding:10px 16px;border-radius:8px;"><strong
+                            style="font-size:20px;" id="count-m3">0</strong><br><span
+                            style="font-size:10px;opacity:0.8;">Bienes</span></div>
+                    <div style="background:rgba(255,255,255,0.12);padding:10px 16px;border-radius:8px;"><strong
+                            style="font-size:20px;" id="sim-count">0</strong><br><span
+                            style="font-size:10px;opacity:0.8;">Con Simulador</span></div>
+                    <div style="background:rgba(255,255,255,0.12);padding:10px 16px;border-radius:8px;"><strong
+                            style="font-size:20px;" id="iperc-count-m3">0</strong><br><span
+                            style="font-size:10px;opacity:0.8;">Fichas IPERC</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ALERTA SIMULACIÓN -->
+        <section class="card"
+            style="background:linear-gradient(135deg,#1B5E20,#2E7D32);color:white;display:flex;align-items:center;gap:16px;">
+            <div style="font-size:40px;">🎮</div>
+            <div>
+                <h3 style="font-size:16px;font-weight:800;">⚡ Regla de Bloqueo: Simulación → Presencial</h3>
+                <p style="font-size:13px;opacity:0.85;margin-top:4px;">Los equipos marcados con 🎮 SIM requieren
+                    completar la simulación virtual antes de acceder a la actividad presencial en el taller.</p>
+            </div>
+        </section>
+
+        <!-- Filtros -->
+        <section>
+            <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;" id="m3-filters"></div>
+            <div class="grid-3" id="m3-bienes"></div>
+        </section>
+
+        <!-- SIMULADOR 1: CÓDIGO G / NC VIEWER -->
+        <section class="card" id="sim-gcode-section">
+            <h3 style="font-size:18px;font-weight:800;margin-bottom:8px;">🎯 Simulador de Código G — NCViewer</h3>
+            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">Objetivo: Verificar trayectorias
+                CNC antes del corte real. Escriba o pegue un programa G-Code y visualice la trayectoria de la
+                herramienta.</p>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <!-- Editor G-Code -->
+                <div>
+                    <label
+                        style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);display:block;margin-bottom:8px;">Programa
+                        G-Code</label>
+                    <textarea id="gcode-editor"
+                        style="width:100%;height:300px;font-family:'JetBrains Mono',monospace;font-size:12px;padding:16px;border:2px solid var(--border);border-radius:8px;background:#1a1a2e;color:#66BB6A;resize:none;outline:none;"
+                        spellcheck="false">; Ejemplo: Cuadrado 100x100mm
+G21 (Milímetros)
+G90 (Coordenadas absolutas)
+G00 X0 Y0 Z5 (Posición inicial)
+G01 Z-3 F200 (Baja a profundidad)
+G01 X100 F500 (Lado derecho)
+G01 Y100 (Lado superior)
+G01 X0 (Lado izquierdo)
+G01 Y0 (Cierra cuadrado)
+G00 Z5 (Sube)
+M30 (Fin de programa)</textarea>
+                    <div style="display:flex;gap:8px;margin-top:8px;">
+                        <button onclick="simulateGCode()"
+                            style="flex:1;padding:12px;background:var(--m3);color:white;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;">▶
+                            Simular Trayectoria</button>
+                        <button onclick="loadExample('circle')"
+                            style="padding:12px 16px;background:#F5F5F5;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;">Cargar
+                            Círculo</button>
+                        <button onclick="loadExample('star')"
+                            style="padding:12px 16px;background:#F5F5F5;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;">Cargar
+                            Estrella</button>
+                    </div>
+                </div>
+                <!-- Visualizador -->
+                <div>
+                    <label
+                        style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);display:block;margin-bottom:8px;">Vista
+                        de Trayectoria</label>
+                    <canvas id="gcode-canvas" width="500" height="300"
+                        style="width:100%;height:300px;border:2px solid var(--border);border-radius:8px;background:#ECEFF1;"></canvas>
+                    <div style="display:flex;gap:16px;margin-top:8px;font-size:11px;color:var(--text-muted);">
+                        <span>🔴 Rápido (G00)</span>
+                        <span>🟢 Corte (G01)</span>
+                        <span id="gcode-status" style="margin-left:auto;font-weight:700;color:var(--m3);"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Referencia rápida -->
+            <div style="margin-top:16px;background:#F5F5F5;padding:16px;border-radius:8px;">
+                <h4
+                    style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px;">
+                    Referencia Rápida G-Code</h4>
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:11px;">
+                    <div><strong class="mono">G00</strong> Movimiento rápido</div>
+                    <div><strong class="mono">G01</strong> Interpolación lineal</div>
+                    <div><strong class="mono">G02</strong> Arco horario</div>
+                    <div><strong class="mono">G03</strong> Arco anti-horario</div>
+                    <div><strong class="mono">G21</strong> Milímetros</div>
+                    <div><strong class="mono">G90</strong> Coordenadas absolutas</div>
+                    <div><strong class="mono">G91</strong> Coordenadas relativas</div>
+                    <div><strong class="mono">M30</strong> Fin programa</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SIMULADOR 2: PINTURA VIRTUAL -->
+        <section class="card" id="sim-paint-section">
+            <h3 style="font-size:18px;font-weight:800;margin-bottom:8px;">🎨 Simulador de Acabado — Técnica de Barnizado
+            </h3>
+            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">Practique la técnica de aplicación
+                con pistola antes del uso real. Controle distancia, velocidad y superposición.</p>
+
+            <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;">
+                <div>
+                    <canvas id="paint-canvas" width="600" height="350"
+                        style="width:100%;height:350px;border:2px solid var(--border);border-radius:8px;background:#D7CCC8;cursor:crosshair;"></canvas>
+                    <div style="display:flex;justify-content:space-between;margin-top:8px;">
+                        <span style="font-size:11px;color:var(--text-muted);">Mueva el cursor para simular la aplicación
+                            de barniz</span>
+                        <button onclick="resetPaint()"
+                            style="padding:6px 14px;background:#F5F5F5;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;">↻
+                            Limpiar</button>
+                    </div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                    <div class="card" style="padding:12px;">
+                        <label
+                            style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-muted);">Distancia
+                            (cm)</label>
+                        <input type="range" id="paint-distance" min="10" max="40" value="25"
+                            style="width:100%;margin-top:4px;">
+                        <div style="font-size:20px;font-weight:900;text-align:center;color:var(--m4);"
+                            id="paint-dist-val">25</div>
+                        <div style="font-size:10px;text-align:center;color:var(--text-muted);">Ideal: 20-30cm</div>
+                    </div>
+                    <div class="card" style="padding:12px;">
+                        <label
+                            style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-muted);">Presión
+                            (bar)</label>
+                        <input type="range" id="paint-pressure" min="1" max="5" value="3" step="0.5"
+                            style="width:100%;margin-top:4px;">
+                        <div style="font-size:20px;font-weight:900;text-align:center;color:var(--m4);"
+                            id="paint-pres-val">3.0</div>
+                        <div style="font-size:10px;text-align:center;color:var(--text-muted);">Ideal: 2-3 bar</div>
+                    </div>
+                    <div class="card" style="padding:12px;">
+                        <label
+                            style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-muted);">Cobertura</label>
+                        <div style="font-size:28px;font-weight:900;text-align:center;margin-top:4px;"
+                            id="paint-coverage">0%</div>
+                        <div class="progress-bar" style="margin-top:4px;">
+                            <div class="fill" id="paint-fill" style="width:0%;background:var(--m4);"></div>
+                        </div>
+                    </div>
+                    <div class="card" style="padding:12px;" id="paint-verdict">
+                        <div style="font-size:12px;font-weight:700;text-align:center;color:var(--text-muted);">Empiece a
+                            pintar...</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Detail Panel -->
+    <div class="overlay" id="overlay" onclick="closeDetail()"></div>
+    <div class="detail-panel" id="detail-panel"></div>
+
+    <script>
+        let DB = { bienes: [] };
+        async function init() {
+            try { const r = await fetch('principios_operacion.json'); DB = await r.json(); } catch (e) { }
+            renderM3();
+            initGCodeSim();
+            initPaintSim();
+            lucide.createIcons();
+        }
+
+        let m3Filter = 'Todos';
+        const M3_SUBCATS = { 'Todos': null, 'Maquinaria': 'sierra|torno|garlopa|lijadora|esmeril|taladro columna', 'CNC/Digital': 'ruteadora|fresa|CNC|láser|código', 'Portátil': 'caladora|taladro portátil|ruteadora portátil', 'Consumibles': 'disco|hoja|broca|cuchilla|dado|piedra|copa' };
+
+        function renderM3() {
+            const bienes = DB.bienes.filter(b => b.modulo === 'M3');
+            document.getElementById('count-m3').textContent = bienes.length;
+            document.getElementById('sim-count').textContent = bienes.filter(b => b.simulador).length;
+            document.getElementById('iperc-count-m3').textContent = bienes.filter(b => b.iperc).length;
+
+            document.getElementById('m3-filters').innerHTML = Object.keys(M3_SUBCATS).map(k =>
+                `<button class="grade-btn ${m3Filter === k ? 'active' : ''}" onclick="setM3Filter('${k}')">${k}</button>`
+            ).join('');
+
+            let filtered = bienes;
+            if (m3Filter !== 'Todos' && M3_SUBCATS[m3Filter]) {
+                const rx = new RegExp(M3_SUBCATS[m3Filter], 'i');
+                filtered = bienes.filter(b => rx.test(b.nombre) || rx.test(b.principles));
+            }
+
+            document.getElementById('m3-bienes').innerHTML = filtered.map(b => `
+    <div class="card" style="cursor:pointer;border-left:4px solid var(--m3);" onclick="openDetail('${b.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:700;">${b.nombre}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;" class="mono">${b.id} · ${b.brand_model}</div>
+        </div>
+        <div style="display:flex;gap:4px;">
+          ${b.iperc ? '<span style="background:#FFF3E0;color:#E65100;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;">⚠️ IPERC</span>' : ''}
+          ${b.simulador ? '<span style="background:#E8F5E9;color:#2E7D32;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;">🎮 SIM</span>' : ''}
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--text-secondary);margin-top:8px;">${b.principles}</p>
+    </div>
+  `).join('');
+        }
+
+        function setM3Filter(f) { m3Filter = f; renderM3(); }
+
+        // ====== G-CODE SIMULATOR ======
+        function initGCodeSim() {
+            const canvas = document.getElementById('gcode-canvas');
+            if (!canvas) return;
+        }
+
+        function simulateGCode() {
+            const code = document.getElementById('gcode-editor').value;
+            const canvas = document.getElementById('gcode-canvas');
+            const ctx = canvas.getContext('2d');
+            const status = document.getElementById('gcode-status');
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Grid
+            ctx.strokeStyle = '#CFD8DC'; ctx.lineWidth = 0.5;
+            for (let i = 0; i < canvas.width; i += 20) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke(); }
+            for (let i = 0; i < canvas.height; i += 20) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke(); }
+
+            const lines = code.split('\n').map(l => l.replace(/\(.*?\)/g, '').replace(/;.*/, '').trim()).filter(l => l);
+            let x = 0, y = 0, scale = 2.5, offX = 50, offY = 250;
+            let lineCount = 0;
+
+            lines.forEach(line => {
+                const cmd = line.match(/G(\d+)/);
+                if (!cmd) return;
+                const g = parseInt(cmd[1]);
+                const nx = line.match(/X([-\d.]+)/); const ny = line.match(/Y([-\d.]+)/);
+                const tx = nx ? parseFloat(nx[1]) : x;
+                const ty = ny ? parseFloat(ny[1]) : y;
+
+                if (g === 0) {
+                    ctx.beginPath(); ctx.setLineDash([4, 4]); ctx.strokeStyle = '#EF5350'; ctx.lineWidth = 1;
+                    ctx.moveTo(x * scale + offX, offY - y * scale); ctx.lineTo(tx * scale + offX, offY - ty * scale);
+                    ctx.stroke(); ctx.setLineDash([]);
+                } else if (g === 1) {
+                    ctx.beginPath(); ctx.strokeStyle = '#4CAF50'; ctx.lineWidth = 2;
+                    ctx.moveTo(x * scale + offX, offY - y * scale); ctx.lineTo(tx * scale + offX, offY - ty * scale);
+                    ctx.stroke(); lineCount++;
+                }
+                x = tx; y = ty;
+            });
+
+            // Origin marker
+            ctx.fillStyle = '#F44336'; ctx.beginPath(); ctx.arc(offX, offY, 4, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#546E7A'; ctx.font = '10px Inter'; ctx.fillText('ORIGIN (0,0)', offX + 8, offY + 4);
+
+            status.textContent = `✅ ${lineCount} movimientos de corte simulados`;
+        }
+
+        function loadExample(type) {
+            const editor = document.getElementById('gcode-editor');
+            if (type === 'circle') {
+                editor.value = `; Círculo R=40mm (aproximado con segmentos)
+G21
+G90
+G00 X40 Y0 Z5
+G01 Z-2 F200
+G01 X38.04 Y12.36 F400
+G01 X30.64 Y22.96
+G01 X19.02 Y30.96
+G01 X5.08 Y34.68
+G01 X-9.28 Y33.92
+G01 X-22.08 Y28.88
+G01 X-32 Y20.4
+G01 X-37.84 Y9.4
+G01 X-39.6 Y-2.8
+G01 X-37.04 Y-14.68
+G01 X-30.36 Y-24.72
+G01 X-20.28 Y-31.68
+G01 X-8 Y-35
+G01 X4.96 Y-34.16
+G01 X16.96 Y-29.56
+G01 X26.56 Y-21.92
+G01 X33 Y-12.2
+G01 X36.04 Y-1.2
+G01 X40 Y0
+G00 Z5
+M30`;
+            } else if (type === 'star') {
+                editor.value = `; Estrella 5 puntas
+G21
+G90
+G00 X0 Y50 Z5
+G01 Z-2 F200
+G01 X11.76 Y16.18 F400
+G01 X47.55 Y15.45
+G01 X19.02 Y-6.18
+G01 X29.39 Y-40.45
+G01 X0 Y-20
+G01 X-29.39 Y-40.45
+G01 X-19.02 Y-6.18
+G01 X-47.55 Y15.45
+G01 X-11.76 Y16.18
+G01 X0 Y50
+G00 Z5
+M30`;
+            }
+            simulateGCode();
+        }
+
+        // ====== PAINT SIMULATOR ======
+        let paintData = [];
+        function initPaintSim() {
+            const canvas = document.getElementById('paint-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            paintData = new Uint8Array(canvas.width * canvas.height);
+
+            // Draw wood grain background
+            ctx.fillStyle = '#D7CCC8';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < 60; i++) {
+                ctx.strokeStyle = `rgba(161,136,127,${Math.random() * 0.3})`;
+                ctx.lineWidth = Math.random() * 2;
+                ctx.beginPath();
+                const y = Math.random() * canvas.height;
+                ctx.moveTo(0, y);
+                for (let x = 0; x < canvas.width; x += 20) {
+                    ctx.lineTo(x, y + (Math.random() - 0.5) * 8);
+                }
+                ctx.stroke();
+            }
+
+            let painting = false;
+            canvas.addEventListener('mousedown', () => painting = true);
+            canvas.addEventListener('mouseup', () => painting = false);
+            canvas.addEventListener('mouseleave', () => painting = false);
+            canvas.addEventListener('mousemove', (e) => {
+                if (!painting) return;
+                const rect = canvas.getBoundingClientRect();
+                const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+                const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+                const dist = parseInt(document.getElementById('paint-distance').value);
+                const pres = parseFloat(document.getElementById('paint-pressure').value);
+                const radius = (40 - dist) * 1.5 + 10;
+                const opacity = Math.min(0.15, pres * 0.04);
+
+                ctx.fillStyle = `rgba(139,69,19,${opacity})`;
+                ctx.beginPath();
+                ctx.ellipse(x, y, radius, radius * 0.6, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Track coverage
+                for (let px = Math.max(0, x - radius); px < Math.min(canvas.width, x + radius); px++) {
+                    for (let py = Math.max(0, y - radius * 0.6); py < Math.min(canvas.height, y + radius * 0.6); py++) {
+                        const idx = Math.floor(py) * canvas.width + Math.floor(px);
+                        if (idx < paintData.length) paintData[idx] = Math.min(255, paintData[idx] + 10);
+                    }
+                }
+                updatePaintCoverage();
+            });
+
+            document.getElementById('paint-distance').addEventListener('input', (e) => {
+                document.getElementById('paint-dist-val').textContent = e.target.value;
+            });
+            document.getElementById('paint-pressure').addEventListener('input', (e) => {
+                document.getElementById('paint-pres-val').textContent = parseFloat(e.target.value).toFixed(1);
+            });
+        }
+
+        function updatePaintCoverage() {
+            const covered = paintData.filter(v => v > 30).length;
+            const total = paintData.length;
+            const pct = Math.round((covered / total) * 100);
+            document.getElementById('paint-coverage').textContent = pct + '%';
+            document.getElementById('paint-fill').style.width = pct + '%';
+
+            const verdict = document.getElementById('paint-verdict');
+            if (pct >= 85) {
+                verdict.innerHTML = '<div style="font-size:12px;font-weight:700;text-align:center;color:#2E7D32;">✅ ¡Excelente cobertura!</div>';
+            } else if (pct >= 50) {
+                verdict.innerHTML = '<div style="font-size:12px;font-weight:700;text-align:center;color:#FF6F00;">⚠️ Falta cobertura uniforme</div>';
+            } else {
+                verdict.innerHTML = '<div style="font-size:12px;font-weight:700;text-align:center;color:var(--text-muted);">Siga aplicando...</div>';
+            }
+        }
+
+        function resetPaint() {
+            const canvas = document.getElementById('paint-canvas');
+            const ctx = canvas.getContext('2d');
+            paintData = new Uint8Array(canvas.width * canvas.height);
+            ctx.fillStyle = '#D7CCC8';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < 60; i++) {
+                ctx.strokeStyle = `rgba(161,136,127,${Math.random() * 0.3})`;
+                ctx.lineWidth = Math.random() * 2;
+                ctx.beginPath();
+                const y = Math.random() * canvas.height;
+                ctx.moveTo(0, y);
+                for (let x = 0; x < canvas.width; x += 20) { ctx.lineTo(x, y + (Math.random() - 0.5) * 8); }
+                ctx.stroke();
+            }
+            document.getElementById('paint-coverage').textContent = '0%';
+            document.getElementById('paint-fill').style.width = '0%';
+            document.getElementById('paint-verdict').innerHTML = '<div style="font-size:12px;font-weight:700;text-align:center;color:var(--text-muted);">Empiece a pintar...</div>';
+        }
+
+        // ====== DETAIL PANEL ======
+        function openDetail(id) {
+            const b = DB.bienes.find(x => x.id === id);
+            if (!b) return;
+            const panel = document.getElementById('detail-panel');
+            panel.innerHTML = `
+    <div class="dp-header m3-header">
+      <button class="dp-close" onclick="closeDetail()">✕</button>
+      <span class="mod-badge" style="background:rgba(255,255,255,0.2);color:white;">${b.modulo} · ${b.categoria}</span>
+      <h2 style="font-size:22px;font-weight:800;margin-top:8px;">${b.nombre}</h2>
+      <p style="opacity:0.85;font-size:13px;margin-top:4px;"><span class="mono">${b.id}</span> · ${b.brand_model}</p>
+    </div>
+    <div class="dp-section"><h4>⚡ Principios</h4><p style="font-size:13px;">${b.principles}</p></div>
+    <div class="dp-section"><h4>📖 Operatividad</h4><p style="font-size:13px;">${b.manuals.operatividad}</p></div>
+    <div class="dp-section"><h4>🔧 Mantenimiento</h4>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div style="background:#F5F5F5;padding:10px;border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);font-weight:700;">LIMPIEZA</div><div style="font-size:12px;margin-top:4px;">${b.manuals.mantenimiento.limpieza}</div></div>
+        <div style="background:#F5F5F5;padding:10px;border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);font-weight:700;">LUBRICACIÓN</div><div style="font-size:12px;margin-top:4px;">${b.manuals.mantenimiento.lubricacion}</div></div>
+        <div style="background:#F5F5F5;padding:10px;border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);font-weight:700;">AFILADO</div><div style="font-size:12px;margin-top:4px;">${b.manuals.mantenimiento.afilado}</div></div>
+        <div style="background:#F5F5F5;padding:10px;border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);font-weight:700;">CALIBRACIÓN</div><div style="font-size:12px;margin-top:4px;">${b.manuals.mantenimiento.calibracion}</div></div>
+      </div>
+    </div>
+    ${b.iperc ? `<div class="dp-section"><h4>⚠️ IPERC</h4><div class="iperc-section"><div style="font-size:11px;font-weight:700;color:#E65100;margin-bottom:6px;">PELIGROS</div>${b.iperc.peligros.map(p => `<span class="iperc-tag">${p}</span>`).join('')}<div style="font-size:11px;font-weight:700;color:#C62828;margin:8px 0 6px;">RIESGOS</div>${b.iperc.riesgos.map(r => `<span class="iperc-tag" style="background:#FFCDD2;color:#C62828;">${r}</span>`).join('')}<div style="font-size:11px;font-weight:700;color:#2E7D32;margin:8px 0 6px;">CONTROLES</div>${b.iperc.controles.map(c => `<span class="iperc-control">${c}</span>`).join('')}</div></div>` : ''}
+    ${b.simulador ? `<div class="dp-section"><h4>🎮 Simulador</h4><div style="background:#E8F5E9;border:2px solid #C8E6C9;padding:14px;border-radius:8px;text-align:center;"><div style="font-size:13px;font-weight:700;color:#2E7D32;">✅ Requiere simulación virtual previa</div></div></div>` : ''}
+  `;
+            panel.classList.add('open');
+            document.getElementById('overlay').classList.add('open');
+        }
+
+        function closeDetail() {
+            document.getElementById('detail-panel').classList.remove('open');
+            document.getElementById('overlay').classList.remove('open');
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+
+</html>

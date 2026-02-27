@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>M1 Inducción — Zonificación General | MSE-SFT Ebanistería</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body>
+    <header class="header-inst">
+        <div class="logo-area">
+            <div>
+                <h1>MSE-SFT Ebanistería</h1><span>M1 · Inducción y Zonificación General · 15h</span>
+            </div>
+        </div>
+        <nav><a href="index.html">Inicio</a><a href="modulo1.html" class="active">M1</a><a href="modulo2.html">M2</a><a
+                href="modulo3.html">M3</a><a href="modulo4.html">M4</a><a href="modulo5.html">M5</a><a
+                href="actividades.html">Integradoras</a></nav>
+    </header>
+
+    <main class="p-page" style="display:flex;flex-direction:column;gap:24px;">
+        <section class="card" style="padding:0;overflow:hidden;">
+            <div class="m1-header" style="padding:32px;color:white;position:relative;overflow:hidden;">
+                <div
+                    style="position:absolute;right:-30px;top:-30px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,0.06);">
+                </div>
+                <span class="mod-badge" style="background:rgba(255,255,255,0.2);color:white;">🏭 Módulo 1</span>
+                <h2 style="font-size:28px;font-weight:900;margin-top:8px;">Inducción y Zonificación General</h2>
+                <p style="opacity:0.85;max-width:600px;margin-top:8px;">Reglamento del taller, zonificación PRONIED,
+                    rutas de evacuación y equipo de protección personal (EPP).</p>
+                <div style="display:flex;gap:16px;margin-top:16px;">
+                    <div style="background:rgba(255,255,255,0.12);padding:10px 16px;border-radius:8px;"><strong
+                            style="font-size:20px;">15h</strong><br><span
+                            style="font-size:10px;opacity:0.8;">Horas</span></div>
+                    <div style="background:rgba(255,255,255,0.12);padding:10px 16px;border-radius:8px;"><strong
+                            style="font-size:20px;" id="count-m1">0</strong><br><span
+                            style="font-size:10px;opacity:0.8;">Bienes</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- REGLAS DE ORO -->
+        <section class="card">
+            <h3 style="font-size:18px;font-weight:800;margin-bottom:16px;">⚠️ 5 Reglas de Oro del Taller</h3>
+            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;">
+                <div class="card" style="text-align:center;padding:16px;border-top:4px solid #C62828;">
+                    <div style="font-size:28px;">🥽</div>
+                    <h4 style="font-size:12px;font-weight:800;margin-top:8px;">Sin EPP no hay taller</h4>
+                    <p style="font-size:11px;color:var(--text-secondary);margin-top:4px;">Uso obligatorio de gafas,
+                        auditivos y botas en todo momento.</p>
+                </div>
+                <div class="card" style="text-align:center;padding:16px;border-top:4px solid #FBC02D;">
+                    <div style="font-size:28px;">🎮</div>
+                    <h4 style="font-size:12px;font-weight:800;margin-top:8px;">Simulación Previa</h4>
+                    <p style="font-size:11px;color:var(--text-secondary);margin-top:4px;">Toda maquinaria pesada
+                        requiere certificar simulación antes de operar.</p>
+                </div>
+                <div class="card" style="text-align:center;padding:16px;border-top:4px solid #1565C0;">
+                    <div style="font-size:28px;">🧹</div>
+                    <h4 style="font-size:12px;font-weight:800;margin-top:8px;">Orden y Limpieza</h4>
+                    <p style="font-size:11px;color:var(--text-secondary);margin-top:4px;">Aspirar la viruta al final de
+                        cada turno usando la central SAA 902.</p>
+                </div>
+                <div class="card" style="text-align:center;padding:16px;border-top:4px solid #2E7D32;">
+                    <div style="font-size:28px;">✋</div>
+                    <h4 style="font-size:12px;font-weight:800;margin-top:8px;">Distancia de Seguridad</h4>
+                    <p style="font-size:11px;color:var(--text-secondary);margin-top:4px;">Usar empujadores cuando la
+                        pieza mida menos de 30cm.</p>
+                </div>
+                <div class="card" style="text-align:center;padding:16px;border-top:4px solid #6A1B9A;">
+                    <div style="font-size:28px;">🔌</div>
+                    <h4 style="font-size:12px;font-weight:800;margin-top:8px;">Corte de Energía</h4>
+                    <p style="font-size:11px;color:var(--text-secondary);margin-top:4px;">Desconectar y bloquear equipos
+                        antes de realizar mantenimiento.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- BIENES M1 -->
+        <section>
+            <h3 style="font-size:18px;font-weight:800;margin-bottom:16px;">🛡️ Equipamiento de Inducción</h3>
+            <div class="grid-3" id="m1-bienes"></div>
+        </section>
+
+        <!-- MATRIZ DE ZONIFICACIÓN -->
+        <section class="card">
+            <h3 style="font-size:18px;font-weight:800;margin-bottom:16px;">📍 Zonificación del Taller (Layout PRONIED)
+            </h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+                <div>
+                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">El espacio se divide
+                        funcionalmente para evitar cuellos de botella y accidentes. Cada módulo formativo corresponde a
+                        áreas físicas específicas.</p>
+                    <div style="display:flex;flex-direction:column;gap:12px;">
+                        <div style="border-left:4px solid var(--m3);padding-left:12px;">
+                            <strong style="font-size:13px;color:var(--m3);">Zona de Máquinas (M3)</strong>
+                            <p style="font-size:12px;color:var(--text-muted);">Sierras, garlopa, tupí. Requiere piso
+                                antideslizante, tomas 380V y extracción de polvo conectada a SAA 902.</p>
+                        </div>
+                        <div style="border-left:4px solid var(--m2);padding-left:12px;">
+                            <strong style="font-size:13px;color:var(--m2);">Zona de Bancos (M2)</strong>
+                            <p style="font-size:12px;color:var(--text-muted);">Mesas de ensamble, herramientas manuales,
+                                medición. Iluminación cenital 500 lux mínima.</p>
+                        </div>
+                        <div style="border-left:4px solid var(--m4);padding-left:12px;">
+                            <strong style="font-size:13px;color:var(--m4);">Cabina de Acabado (M4)</strong>
+                            <p style="font-size:12px;color:var(--text-muted);">Área aislada. Ventilación forzada,
+                                extractores a nivel de piso. Sistema eléctrico a prueba de explosión.</p>
+                        </div>
+                    </div>
+                </div>
+                <div
+                    style="background:#F5F5F5;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text-muted);border:2px dashed var(--border);min-height:200px;flex-direction:column;">
+                    <i data-lucide="map" style="width:48px;height:48px;opacity:0.3;margin-bottom:8px;"></i>
+                    <span>Accede al Mapa Isométrico Interactivo en la <strong>Página de Inicio</strong></span>
+                    <a href="index.html"
+                        style="margin-top:12px;padding:8px 16px;background:white;border:1px solid var(--border);border-radius:6px;color:var(--m1);text-decoration:none;font-weight:700;">Ver
+                        Isométrico</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div class="overlay" id="overlay" onclick="closeDetail()"></div>
+    <div class="detail-panel" id="detail-panel"></div>
+
+    <script>
+        let DB = { bienes: [] };
+        async function init() {
+            try { const r = await fetch('principios_operacion.json'); DB = await r.json(); } catch (e) { }
+            renderM1();
+            lucide.createIcons();
+        }
+
+        function renderM1() {
+            const bienes = DB.bienes.filter(b => b.modulo === 'M1');
+            document.getElementById('count-m1').textContent = bienes.length;
+            document.getElementById('m1-bienes').innerHTML = bienes.map(b => `
+    <div class="card" style="cursor:pointer;border-left:4px solid var(--m1);" onclick="openDetail('${b.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:700;">${b.nombre}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;" class="mono">${b.id} · ${b.brand_model}</div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--text-secondary);margin-top:8px;">${b.principles}</p>
+    </div>
+  `).join('');
+        }
+
+        function openDetail(id) {
+            const b = DB.bienes.find(x => x.id === id);
+            if (!b) return;
+            const panel = document.getElementById('detail-panel');
+            panel.innerHTML = `
+    <div class="dp-header m1-header">
+      <button class="dp-close" onclick="closeDetail()">✕</button>
+      <span class="mod-badge" style="background:rgba(255,255,255,0.2);color:white;">${b.modulo} · ${b.categoria}</span>
+      <h2 style="font-size:22px;font-weight:800;margin-top:8px;">${b.nombre}</h2>
+      <p style="opacity:0.85;font-size:13px;margin-top:4px;"><span class="mono">${b.id}</span> · ${b.brand_model}</p>
+    </div>
+    <div class="dp-section"><h4>⚡ Principios</h4><p style="font-size:13px;">${b.principles}</p></div>
+    <div class="dp-section"><h4>📖 Operatividad</h4><p style="font-size:13px;">${b.manuals.operatividad}</p></div>
+    <div class="dp-section"><h4>🔧 Mantenimiento / Limpieza</h4><p style="font-size:13px;">${b.manuals.mantenimiento.limpieza}</p></div>
+  `;
+            panel.classList.add('open');
+            document.getElementById('overlay').classList.add('open');
+        }
+        function closeDetail() {
+            document.getElementById('detail-panel').classList.remove('open');
+            document.getElementById('overlay').classList.remove('open');
+        }
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+
+</html>

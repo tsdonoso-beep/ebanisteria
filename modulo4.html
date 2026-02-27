@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>M4 Almacén — Logística, Enchapado y Acabado | MSE-SFT Ebanistería</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body>
+    <header class="header-inst">
+        <div class="logo-area">
+            <div>
+                <h1>MSE-SFT Ebanistería</h1><span>M4 · Almacén: Logística, Enchapado y Acabado · 35h</span>
+            </div>
+        </div>
+        <nav><a href="index.html">Inicio</a><a href="modulo1.html">M1</a><a href="modulo2.html">M2</a><a
+                href="modulo3.html">M3</a><a href="modulo4.html" class="active">M4</a><a href="modulo5.html">M5</a><a
+                href="actividades.html">Integradoras</a></nav>
+    </header>
+
+    <main class="p-page" style="display:flex;flex-direction:column;gap:24px;">
+        <section class="card" style="padding:0;overflow:hidden;">
+            <div class="m4-header" style="padding:32px;color:white;position:relative;overflow:hidden;">
+                <div
+                    style="position:absolute;right:-30px;top:-30px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,0.06);">
+                </div>
+                <span class="mod-badge" style="background:rgba(255,255,255,0.2);color:white;">📦 Módulo 4</span>
+                <h2 style="font-size:28px;font-weight:900;margin-top:8px;">Almacén: Logística, Enchapado y Acabado</h2>
+                <p style="opacity:0.85;max-width:600px;margin-top:8px;">Gestión de suministros, enchapado de cantos,
+                    aspiración industrial y acabado. Campo IPERC obligatorio por máquina.</p>
+                <div style="display:flex;gap:16px;margin-top:16px;">
+                    <div style="background:rgba(255,255,255,0.12);padding:10px 16px;border-radius:8px;"><strong
+                            style="font-size:20px;">35h</strong><br><span
+                            style="font-size:10px;opacity:0.8;">Horas</span></div>
+                    <div style="background:rgba(255,255,255,0.12);padding:10px 16px;border-radius:8px;"><strong
+                            style="font-size:20px;" id="count-m4">0</strong><br><span
+                            style="font-size:10px;opacity:0.8;">Bienes</span></div>
+                    <div style="background:rgba(255,255,255,0.12);padding:10px 16px;border-radius:8px;"><strong
+                            style="font-size:20px;" id="iperc-count-m4">0</strong><br><span
+                            style="font-size:10px;opacity:0.8;">Fichas IPERC</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- IPERC Alert -->
+        <section class="card"
+            style="background:linear-gradient(135deg,#E65100,#FF6F00);color:white;display:flex;align-items:center;gap:16px;">
+            <div style="font-size:40px;">⚠️</div>
+            <div>
+                <h3 style="font-size:16px;font-weight:800;">Campo IPERC Obligatorio</h3>
+                <p style="font-size:13px;opacity:0.85;margin-top:4px;">Cada máquina de este módulo despliega sus
+                    peligros, riesgos y controles. Enfoque: mantener la máquina operativa y segura para la clase.</p>
+            </div>
+        </section>
+
+        <!-- Filters + Bienes -->
+        <section>
+            <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;" id="m4-filters"></div>
+            <div class="grid-3" id="m4-bienes"></div>
+        </section>
+
+        <!-- IPERC MATRIX -->
+        <section class="card">
+            <h3 style="font-size:18px;font-weight:800;margin-bottom:16px;">📋 Matriz IPERC — Equipos del Módulo 4</h3>
+            <div style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:12px;" id="iperc-table">
+                    <thead>
+                        <tr style="background:#F5F5F5;">
+                            <th
+                                style="padding:10px;text-align:left;border-bottom:2px solid var(--border);font-size:11px;">
+                                EQUIPO</th>
+                            <th
+                                style="padding:10px;text-align:left;border-bottom:2px solid var(--border);font-size:11px;color:#E65100;">
+                                PELIGROS</th>
+                            <th
+                                style="padding:10px;text-align:left;border-bottom:2px solid var(--border);font-size:11px;color:#C62828;">
+                                RIESGOS</th>
+                            <th
+                                style="padding:10px;text-align:left;border-bottom:2px solid var(--border);font-size:11px;color:#2E7D32;">
+                                CONTROLES</th>
+                            <th
+                                style="padding:10px;text-align:left;border-bottom:2px solid var(--border);font-size:11px;color:#0277BD;">
+                                ENFOQUE OPERATIVO</th>
+                        </tr>
+                    </thead>
+                    <tbody id="iperc-body"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Tapacantos -->
+        <section class="card">
+            <h3 style="font-size:18px;font-weight:800;margin-bottom:16px;">🔲 Proceso de Enchapado de Cantos</h3>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+                <div class="card" style="text-align:center;padding:16px;border-top:4px solid var(--m4);">
+                    <div style="font-size:32px;margin-bottom:8px;">1️⃣</div>
+                    <h4 style="font-size:13px;font-weight:700;">Seleccionar Tapacanto</h4>
+                    <p style="font-size:11px;color:var(--text-secondary);margin-top:4px;">PVC, melamina o chapa natural
+                        según tablero (COM-244)</p>
+                </div>
+                <div class="card" style="text-align:center;padding:16px;border-top:4px solid var(--m4);">
+                    <div style="font-size:32px;margin-bottom:8px;">2️⃣</div>
+                    <h4 style="font-size:13px;font-weight:700;">Precalentar Enchapadora</h4>
+                    <p style="font-size:11px;color:var(--text-secondary);margin-top:4px;">180-200°C, 15 min. Holzstar
+                        KAM 50M (ESP-152)</p>
+                </div>
+                <div class="card" style="text-align:center;padding:16px;border-top:4px solid var(--m4);">
+                    <div style="font-size:32px;margin-bottom:8px;">3️⃣</div>
+                    <h4 style="font-size:13px;font-weight:700;">Alimentar Pieza</h4>
+                    <p style="font-size:11px;color:var(--text-secondary);margin-top:4px;">Ajustar presión rodillos,
+                        avance constante</p>
+                </div>
+                <div class="card" style="text-align:center;padding:16px;border-top:4px solid var(--m4);">
+                    <div style="font-size:32px;margin-bottom:8px;">4️⃣</div>
+                    <h4 style="font-size:13px;font-weight:700;">Recorte y Acabado</h4>
+                    <p style="font-size:11px;color:var(--text-secondary);margin-top:4px;">Guillotina, rasqueta, lijado
+                        fino del canto</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div class="overlay" id="overlay" onclick="closeDetail()"></div>
+    <div class="detail-panel" id="detail-panel"></div>
+
+    <script>
+        let DB = { bienes: [] };
+        async function init() {
+            try { const r = await fetch('principios_operacion.json'); DB = await r.json(); } catch (e) { }
+            renderM4();
+            renderIPERC();
+            lucide.createIcons();
+        }
+
+        let m4Filter = 'Todos';
+        const M4_SUBCATS = { 'Todos': null, 'Enchapado': 'enchap|tapacanto', 'Acabado': 'pintura|pistola|barniz|cabina', 'Aspiración': 'aspiración|sopladora', 'Sujeción': 'prensa|sargenta|tornillo', 'Herrajes': 'destornillador|llave|allen|punta|adaptador|bisagra|ensamblaje' };
+
+        function renderM4() {
+            const bienes = DB.bienes.filter(b => b.modulo === 'M4');
+            document.getElementById('count-m4').textContent = bienes.length;
+            document.getElementById('iperc-count-m4').textContent = bienes.filter(b => b.iperc).length;
+
+            document.getElementById('m4-filters').innerHTML = Object.keys(M4_SUBCATS).map(k =>
+                `<button class="grade-btn ${m4Filter === k ? 'active' : ''}" onclick="setM4Filter('${k}')">${k}</button>`
+            ).join('');
+
+            let filtered = bienes;
+            if (m4Filter !== 'Todos' && M4_SUBCATS[m4Filter]) {
+                const rx = new RegExp(M4_SUBCATS[m4Filter], 'i');
+                filtered = bienes.filter(b => rx.test(b.nombre) || rx.test(b.principles));
+            }
+
+            document.getElementById('m4-bienes').innerHTML = filtered.map(b => `
+    <div class="card" style="cursor:pointer;border-left:4px solid var(--m4);" onclick="openDetail('${b.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:700;">${b.nombre}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;" class="mono">${b.id} · ${b.brand_model}</div>
+        </div>
+        ${b.iperc ? '<span style="background:#FFF3E0;color:#E65100;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;">⚠️ IPERC</span>' : ''}
+      </div>
+      <p style="font-size:12px;color:var(--text-secondary);margin-top:8px;">${b.principles}</p>
+    </div>
+  `).join('');
+        }
+        function setM4Filter(f) { m4Filter = f; renderM4(); }
+
+        function renderIPERC() {
+            const ipercBienes = DB.bienes.filter(b => b.modulo === 'M4' && b.iperc);
+            const tbody = document.getElementById('iperc-body');
+            tbody.innerHTML = ipercBienes.map(b => `
+    <tr style="border-bottom:1px solid var(--border);cursor:pointer;" onclick="openDetail('${b.id}')">
+      <td style="padding:10px;font-weight:700;">${b.nombre}<br><span style="font-size:10px;color:var(--text-muted);">${b.brand_model}</span></td>
+      <td style="padding:10px;">${b.iperc.peligros.map(p => `<span class="iperc-tag">${p}</span>`).join(' ')}</td>
+      <td style="padding:10px;">${b.iperc.riesgos.map(r => `<span class="iperc-tag" style="background:#FFCDD2;color:#C62828;">${r}</span>`).join(' ')}</td>
+      <td style="padding:10px;">${b.iperc.controles.map(c => `<span class="iperc-control">${c}</span>`).join(' ')}</td>
+      <td style="padding:10px;font-size:11px;color:var(--text-secondary);">Mantener operativa: limpieza diaria, verificar protecciones</td>
+    </tr>
+  `).join('');
+            // Also add M3 IPERC items for cross-reference
+            const m3Iperc = DB.bienes.filter(b => b.modulo === 'M3' && b.iperc);
+            tbody.innerHTML += m3Iperc.map(b => `
+    <tr style="border-bottom:1px solid var(--border);background:#FAFAFA;cursor:pointer;" onclick="openDetail('${b.id}')">
+      <td style="padding:10px;font-weight:700;">${b.nombre}<br><span style="font-size:10px;color:var(--text-muted);">${b.brand_model} · <em>M3</em></span></td>
+      <td style="padding:10px;">${b.iperc.peligros.map(p => `<span class="iperc-tag">${p}</span>`).join(' ')}</td>
+      <td style="padding:10px;">${b.iperc.riesgos.map(r => `<span class="iperc-tag" style="background:#FFCDD2;color:#C62828;">${r}</span>`).join(' ')}</td>
+      <td style="padding:10px;">${b.iperc.controles.map(c => `<span class="iperc-control">${c}</span>`).join(' ')}</td>
+      <td style="padding:10px;font-size:11px;color:var(--text-secondary);">Cross-ref M3</td>
+    </tr>
+  `).join('');
+        }
+
+        function openDetail(id) {
+            const b = DB.bienes.find(x => x.id === id);
+            if (!b) return;
+            const panel = document.getElementById('detail-panel');
+            const grad = b.modulo === 'M3' ? 'linear-gradient(135deg,#2E7D32,#1B5E20)' : 'linear-gradient(135deg,#6A1B9A,#4A148C)';
+            panel.innerHTML = `
+    <div class="dp-header" style="background:${grad};">
+      <button class="dp-close" onclick="closeDetail()">✕</button>
+      <span class="mod-badge" style="background:rgba(255,255,255,0.2);color:white;">${b.modulo} · ${b.categoria}</span>
+      <h2 style="font-size:22px;font-weight:800;margin-top:8px;">${b.nombre}</h2>
+      <p style="opacity:0.85;font-size:13px;margin-top:4px;"><span class="mono">${b.id}</span> · ${b.brand_model}</p>
+    </div>
+    <div class="dp-section"><h4>⚡ Principios</h4><p style="font-size:13px;">${b.principles}</p></div>
+    <div class="dp-section"><h4>📖 Operatividad</h4><p style="font-size:13px;">${b.manuals.operatividad}</p></div>
+    <div class="dp-section"><h4>🔧 Mantenimiento</h4>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div style="background:#F5F5F5;padding:10px;border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);font-weight:700;">LIMPIEZA</div><div style="font-size:12px;margin-top:4px;">${b.manuals.mantenimiento.limpieza}</div></div>
+        <div style="background:#F5F5F5;padding:10px;border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);font-weight:700;">LUBRICACIÓN</div><div style="font-size:12px;margin-top:4px;">${b.manuals.mantenimiento.lubricacion}</div></div>
+        <div style="background:#F5F5F5;padding:10px;border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);font-weight:700;">AFILADO</div><div style="font-size:12px;margin-top:4px;">${b.manuals.mantenimiento.afilado}</div></div>
+        <div style="background:#F5F5F5;padding:10px;border-radius:8px;"><div style="font-size:10px;color:var(--text-muted);font-weight:700;">CALIBRACIÓN</div><div style="font-size:12px;margin-top:4px;">${b.manuals.mantenimiento.calibracion}</div></div>
+      </div>
+    </div>
+    ${b.iperc ? `<div class="dp-section"><h4>⚠️ IPERC</h4><div class="iperc-section"><div style="font-size:11px;font-weight:700;color:#E65100;margin-bottom:6px;">PELIGROS</div>${b.iperc.peligros.map(p => `<span class="iperc-tag">${p}</span>`).join('')}<div style="font-size:11px;font-weight:700;color:#C62828;margin:8px 0 6px;">RIESGOS</div>${b.iperc.riesgos.map(r => `<span class="iperc-tag" style="background:#FFCDD2;color:#C62828;">${r}</span>`).join('')}<div style="font-size:11px;font-weight:700;color:#2E7D32;margin:8px 0 6px;">CONTROLES</div>${b.iperc.controles.map(c => `<span class="iperc-control">${c}</span>`).join('')}</div></div>` : ''}
+  `;
+            panel.classList.add('open');
+            document.getElementById('overlay').classList.add('open');
+        }
+        function closeDetail() {
+            document.getElementById('detail-panel').classList.remove('open');
+            document.getElementById('overlay').classList.remove('open');
+        }
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+
+</html>
