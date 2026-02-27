@@ -12,8 +12,8 @@
  * @param {string}   jointType     Código y nombre de la unión a evaluar.
  *                                 Ej: "N2 - Ensamble a Caja y Espiga"
  *
- * @param {Object}   stlUrls       Rutas a los archivos STL de las piezas.
- *                                 Ej: { macho: '/models/espiga.stl', hembra: '/models/caja.stl' }
+ * @param {Object}   stlUrls       Ruta al archivo STL del ensamble completo.
+ *                                 Ej: { url: '/models/02-caja-espiga.stl' }
  *                                 Si es null se usan geometrías placeholder.
  *
  * @param {Object}   injectedError Error de fabricación inyectado por la plataforma.
@@ -72,7 +72,7 @@ const DEFAULT_ERROR_OPTIONS = [
 
 const SimuladorDiagnostico3D = ({
   jointType      = 'N2 - Ensamble a Caja y Espiga',
-  stlUrls        = null,
+  stlUrls        = null,   // { url: '/models/02-caja-espiga.stl' } | null
   injectedError  = { id: 'ajuste_suelto', label: 'Ajuste muy suelto' },
   errorOptions   = DEFAULT_ERROR_OPTIONS,
   onComplete     = null,
