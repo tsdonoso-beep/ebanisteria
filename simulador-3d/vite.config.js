@@ -5,6 +5,7 @@ export default defineConfig({
   plugins: [react()],
   // Configuración para el demo local. Al empaquetar como librería
   // cambiar build.lib con la entrada al componente principal.
+  base: './',
   build: {
     outDir: 'dist',
   },
