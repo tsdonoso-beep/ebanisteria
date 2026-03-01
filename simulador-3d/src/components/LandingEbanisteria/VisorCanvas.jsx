@@ -1,23 +1,24 @@
 /**
  * VisorCanvas.jsx
- * Visor 3D — siempre exactamente DOS piezas visibles (0–99 %).
+ * Visor 3D — 5 fases claras con geometría realista:
  *
- *   0–24%   → Bloque en bruto: dos maderos apilados (arriba / abajo)
- *   25–49%  → Trazado: zona de corte marcada en rojo, independiente por pieza
- *   50–79%  → Pieza cortada: zona eliminada oscurecida, perfil visible
- *   80–99%  → Ensamblaje: pieza de arriba baja a encajar con la de abajo
- *   100%    → Ensamblado: modelo STL completo con brillo ambarino
+ *  Fase 1 (0–24%)   Bloque en bruto — dos maderos sólidos apilados (arriba/abajo)
+ *  Fase 2 (25–49%)  Trazado — contorno rojo punteado + sombreado 3D de la zona a retirar
+ *  Fase 3 (50–79%)  Pieza cortada — ya no es un bloque: geometría CSG limpia
+ *  Fase 4 (80–99%)  Ensamblaje — la pieza de arriba baja a encajar con la de abajo
+ *  Fase 5 (100%)    Ensamblado — modelo STL completo con brillo ambarino + cotas
  *
- * El STL se usa SOLO en la fase final (100 %).
- * No hay clipping, no hay duplicidad.
+ * Las fases 1–4 usan SOLO geometría procedural → nunca hay duplicidad de piezas.
+ * El STL aparece únicamente en la fase 5 (sin clipping).
  */
 
-import React, { useRef, useMemo, Suspense } from 'react';
+import React, { useRef, useMemo, useEffect, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, ContactShadows, Grid, Html } from '@react-three/drei';
 import { useLoader, useFrame } from '@react-three/fiber';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import * as THREE from 'three';
+import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 
 // ── Límites de fase ─────────────────────────────────────────────────────────
 const FASE_TRAZADO  = 25;
@@ -25,8 +26,13 @@ const FASE_CORTADO  = 50;
 const FASE_ENSAMBLE = 80;
 
 // ── Materiales base ─────────────────────────────────────────────────────────
-const MAT_BRUTO  = new THREE.MeshStandardMaterial({ color: '#c8922a', roughness: 0.85, metalness: 0.02 });
-const MAT_OSCURO = new THREE.MeshStandardMaterial({ color: '#8b5e1a', roughness: 0.90, metalness: 0.02 });
+const COLOR_A = '#c8922a';
+const COLOR_B = '#8b5e1a';
+const MAT_A = new THREE.MeshStandardMaterial({ color: COLOR_A, roughness: 0.85, metalness: 0.02 });
+const MAT_B = new THREE.MeshStandardMaterial({ color: COLOR_B, roughness: 0.90, metalness: 0.02 });
+
+// ── Evaluador CSG (instancia única reutilizable) ─────────────────────────────
+const CSG = new Evaluator();
 
 // ══════════════════════════════════════════════════════════════════════════
 // Configuración de geometría por familia de junta
@@ -97,85 +103,176 @@ function getFamiliaConfig(familia) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// Pieza individual: bloque + zonas de corte visualizadas por fase
+// CSG: construye la geometría resultante después de los cortes
 // ══════════════════════════════════════════════════════════════════════════
 
-function PiezaConCorte({ dims, eliminar, material, opTrazado, opHueco }) {
+function buildCortadaGeo(dims, eliminar) {
+  try {
+    let brush = new Brush(new THREE.BoxGeometry(...dims));
+    brush.updateMatrixWorld();
+
+    for (const zona of eliminar) {
+      const cut = new Brush(new THREE.BoxGeometry(...zona.args));
+      cut.position.set(...zona.pos);
+      cut.updateMatrixWorld();
+      brush = CSG.evaluate(brush, cut, SUBTRACTION);
+      brush.updateMatrixWorld();
+    }
+
+    const geo = brush.geometry.clone();
+    geo.computeVertexNormals();
+    return geo;
+  } catch {
+    // fallback al bloque completo si CSG falla
+    const geo = new THREE.BoxGeometry(...dims);
+    geo.computeVertexNormals();
+    return geo;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// Fase 2 — Contorno rojo punteado + sombreado 3D de la zona a retirar
+// ══════════════════════════════════════════════════════════════════════════
+
+function ZonaTrazado({ args, pos, opacity }) {
+  const lsRef = useRef();
+
+  const edgesGeo = useMemo(() => {
+    const box = new THREE.BoxGeometry(...args);
+    return new THREE.EdgesGeometry(box);
+  }, [args[0], args[1], args[2]]);
+
+  // LineDashedMaterial necesita que el objeto LineSegments compute distancias
+  useEffect(() => {
+    if (lsRef.current) lsRef.current.computeLineDistances();
+  }, [edgesGeo]);
+
+  if (opacity < 0.01) return null;
+
+  return (
+    <group position={pos}>
+      {/* Relleno rojo semitransparente — sombreado 3D */}
+      <mesh renderOrder={1}>
+        <boxGeometry args={args} />
+        <meshStandardMaterial
+          color="#ef4444" transparent opacity={opacity * 0.50}
+          emissive="#dc2626" emissiveIntensity={0.80}
+          depthWrite={false} side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      {/* Contorno punteado rojo */}
+      <lineSegments ref={lsRef} geometry={edgesGeo} renderOrder={2}>
+        <lineDashedMaterial
+          color="#ff1111" dashSize={0.14} gapSize={0.09}
+          transparent opacity={Math.min(1, opacity * 1.4)}
+          linewidth={2}
+        />
+      </lineSegments>
+    </group>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// Pieza con bloque sólido (fases 1 y 2)
+// ══════════════════════════════════════════════════════════════════════════
+
+function PiezaSolida({ dims, eliminar, material, opTrazado }) {
   return (
     <group>
-      {/* Bloque macizo */}
       <mesh castShadow receiveShadow material={material}>
         <boxGeometry args={dims} />
       </mesh>
-
-      {/* Zonas de corte: rojo (trazado) o hueco oscuro (cortado) */}
-      {eliminar.map((z, i) => {
-        const mostrandoHueco = opHueco > 0.01;
-        return (
-          <mesh key={i} position={z.pos}>
-            <boxGeometry args={z.args} />
-            <meshStandardMaterial
-              color={mostrandoHueco ? '#0f172a' : '#ef4444'}
-              transparent
-              opacity={mostrandoHueco ? opHueco : opTrazado}
-              emissive={mostrandoHueco ? '#000000' : '#7f1d1d'}
-              emissiveIntensity={mostrandoHueco ? 0 : 0.6}
-              depthWrite={false}
-            />
-          </mesh>
-        );
-      })}
+      {eliminar.map((z, i) => (
+        <ZonaTrazado key={i} args={z.args} pos={z.pos} opacity={opTrazado} />
+      ))}
     </group>
   );
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// Fases 0–99 %: dos bloques procedurales apilados en eje Y
+// Pieza cortada con geometría CSG real (fases 3 y 4)
 // ══════════════════════════════════════════════════════════════════════════
 
-function BloquesEnBruto({ familia, progreso }) {
+function PiezaCortada({ familia, pieza, color }) {
+  const geo = useMemo(() => {
+    const cfg = getFamiliaConfig(familia);
+    const dims    = pieza === 'A' ? cfg.bloqueA    : cfg.bloqueB;
+    const eliminar = pieza === 'A' ? cfg.eliminarA : cfg.eliminarB;
+    return buildCortadaGeo(dims, eliminar);
+  }, [familia, pieza]);
+
+  return (
+    <mesh castShadow receiveShadow geometry={geo}>
+      <meshStandardMaterial color={color} roughness={0.82} metalness={0.03} />
+    </mesh>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// Componente principal de bloques — maneja todas las fases 0–99%
+// ══════════════════════════════════════════════════════════════════════════
+
+function BloquesAnimados({ familia, progreso }) {
   const cfg = getFamiliaConfig(familia);
 
-  // Transiciones suaves entre fases
+  // Transiciones suaves
   const tTrazado = progreso >= FASE_TRAZADO
     ? Math.min(1, (progreso - FASE_TRAZADO) / 8) : 0;
   const tCortado = progreso >= FASE_CORTADO
-    ? Math.min(1, (progreso - FASE_CORTADO) / 8) : 0;
+    ? Math.min(1, (progreso - FASE_CORTADO) / 6) : 0;
   const tUnion   = progreso >= FASE_ENSAMBLE
     ? Math.min(1, (progreso - FASE_ENSAMBLE) / (100 - FASE_ENSAMBLE)) : 0;
 
-  // Trazado → Cortado: el rojo desaparece y aparece el hueco oscuro
-  const opTrazado = tCortado > 0 ? 0 : tTrazado * 0.65;
-  const opHueco   = tCortado * 0.92;
+  // En fase cortado el trazado desaparece
+  const opTrazado = tCortado > 0 ? 0 : tTrazado * 0.9;
+  const mostrarSolido  = tCortado < 1;     // 0-99% de la transición a cortado
+  const mostrarCortado = tCortado > 0;     // una vez iniciado el corte
 
-  // Gap en eje Y: 1.0 unidades separadas → 0 al ensamblarse
+  // Gap en eje Y que se cierra durante la unión
   const gap = 1.0 * (1 - tUnion);
-  const yA  = -(gap / 2 + cfg.bloqueA[1] / 2); // pieza A: abajo
-  const yB  = +(gap / 2 + cfg.bloqueB[1] / 2); // pieza B: arriba
+  const yA  = -(gap / 2 + cfg.bloqueA[1] / 2);
+  const yB  = +(gap / 2 + cfg.bloqueB[1] / 2);
 
   return (
     <group>
-      {/* Pieza A — abajo (fija, recibe a la pieza B) */}
+      {/* ── Pieza A — abajo ── */}
       <group position={[0, yA, 0]}>
-        <PiezaConCorte
-          dims={cfg.bloqueA} eliminar={cfg.eliminarA}
-          material={MAT_BRUTO} opTrazado={opTrazado} opHueco={opHueco}
-        />
+        {/* Bloque sólido: visible en fases 1 y 2 */}
+        {mostrarSolido && (
+          <group opacity={1 - tCortado}>
+            <PiezaSolida
+              dims={cfg.bloqueA} eliminar={cfg.eliminarA}
+              material={MAT_A} opTrazado={opTrazado}
+            />
+          </group>
+        )}
+        {/* Pieza cortada CSG: aparece en fases 3 y 4 */}
+        {mostrarCortado && (
+          <PiezaCortada familia={familia} pieza="A" color={COLOR_A} />
+        )}
       </group>
 
-      {/* Pieza B — arriba (desciende para ensamblarse) */}
+      {/* ── Pieza B — arriba (desciende en fase 4) ── */}
       <group position={[0, yB, 0]}>
-        <PiezaConCorte
-          dims={cfg.bloqueB} eliminar={cfg.eliminarB}
-          material={MAT_OSCURO} opTrazado={opTrazado} opHueco={opHueco}
-        />
+        {mostrarSolido && (
+          <group>
+            <PiezaSolida
+              dims={cfg.bloqueB} eliminar={cfg.eliminarB}
+              material={MAT_B} opTrazado={opTrazado}
+            />
+          </group>
+        )}
+        {mostrarCortado && (
+          <PiezaCortada familia={familia} pieza="B" color={COLOR_B} />
+        )}
       </group>
     </group>
   );
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// Fase 100 %: modelo STL completo con glow ambarino (sin clipping)
+// Fase 5 (100%): modelo STL completo + glow + cotas opcionales
 // ══════════════════════════════════════════════════════════════════════════
 
 function STLEnsamblado({ url, mostrarCotas, tolerancias }) {
@@ -252,7 +349,7 @@ function LoadingFallback() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// Componente público: VisorCanvas
+// Componente público
 // ══════════════════════════════════════════════════════════════════════════
 
 export default function VisorCanvas({ modelo, progreso, mostrarCotas }) {
@@ -264,7 +361,6 @@ export default function VisorCanvas({ modelo, progreso, mostrarCotas }) {
     <Canvas camera={{ position: [5, 3, 10], fov: 44 }} shadows gl={{ antialias: true }}>
       <color attach="background" args={['#0f172a']} />
 
-      {/* Iluminación */}
       <ambientLight intensity={0.38} />
       <directionalLight
         position={[6, 10, 6]} intensity={1.5} castShadow
@@ -275,12 +371,12 @@ export default function VisorCanvas({ modelo, progreso, mostrarCotas }) {
       <directionalLight position={[-5, 4, -5]} intensity={0.3} color="#a0c4ff" />
       <pointLight position={[0, 8, 0]} intensity={0.4} color="#fff5e0" />
 
-      {/* Fases 0–99 %: dos bloques procedurales, nunca duplicados */}
+      {/* Fases 1–4: dos piezas procedurales, jamás duplicadas */}
       {!ensamblado && (
-        <BloquesEnBruto familia={modelo.familia} progreso={progreso} />
+        <BloquesAnimados familia={modelo.familia} progreso={progreso} />
       )}
 
-      {/* Fase 100 %: STL completo sin clipping — una sola pieza unida */}
+      {/* Fase 5: STL completo unido, sin clipping */}
       {ensamblado && (
         <Suspense fallback={<LoadingFallback />}>
           <STLEnsamblado
@@ -291,7 +387,6 @@ export default function VisorCanvas({ modelo, progreso, mostrarCotas }) {
         </Suspense>
       )}
 
-      {/* Sombras y grilla */}
       <ContactShadows position={[0, -6.5, 0]} opacity={0.45} scale={18} blur={2.5} far={8} />
       <Grid
         position={[0, -6.52, 0]} args={[20, 20]}
