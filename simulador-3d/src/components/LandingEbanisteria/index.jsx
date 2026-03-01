@@ -73,14 +73,14 @@ export default function LandingEbanisteria() {
 
   const handleCotas = useCallback(() => {
     setModoCotas(v => {
-      // Ir a fase "Pieza cortada" para que las cotas tengan contexto
-      if (!v && progreso < 50) setProgreso(50);
+      // Las cotas se muestran sobre el STL ensamblado (100%)
+      if (!v && progreso < 100) setProgreso(100);
       return !v;
     });
   }, [progreso]);
 
   // Botón "Ensamblar": anima el slider hasta 100%.
-  // Si ya está ensamblado, vuelve a la fase "Pieza cortada" (66%).
+  // Si ya está ensamblado, vuelve a la fase "Pieza cortada" (50%).
   const handleEnsamblar = useCallback(() => {
     if (animRef.current) cancelAnimationFrame(animRef.current);
 
