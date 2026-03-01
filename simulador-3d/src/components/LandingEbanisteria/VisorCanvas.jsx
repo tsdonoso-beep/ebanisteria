@@ -1,15 +1,14 @@
 /**
  * VisorCanvas.jsx
- * Visor 3D interactivo con línea de tiempo de fabricación en 5 fases.
+ * Visor 3D con línea de tiempo de fabricación en 4 fases claras:
  *
- * Fases del slider (progreso 0–100):
- *   0–24%   → Bloques en bruto (geometría placeholder de dos cajas)
- *   25–49%  → Trazado: overlay rojo translúcido sobre zonas a eliminar
- *   50–74%  → STL real cargado; plano de corte revela el perfil de la unión
- *   75–99%  → Piezas posicionadas (plano retirado, STL completo + separador)
- *   100%    → Ensamblaje completo (STL con glow ambarino)
+ *   0–32%   → Bloque en bruto: dos maderos sólidos sin cortes
+ *   33–65%  → Trazado: zonas de corte resaltadas en rojo
+ *   66–99%  → Pieza cortada: STL dividido en dos mitades con gap animado
+ *   100%    → Ensamblaje: las piezas se unen con glow ambarino
  *
- * Modo Cotas: muestra tarjetas Html ancladas al modelo con datos de tolerancia.
+ * El gap entre piezas se cierra al avanzar el slider de 66 → 100%.
+ * El botón "Ensamblar piezas" anima automáticamente el slider hasta 100%.
  */
 
 import React, { useRef, useMemo, Suspense } from 'react';
@@ -19,11 +18,19 @@ import { useLoader, useFrame, useThree } from '@react-three/fiber';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import * as THREE from 'three';
 
-// ── Materiales ──────────────────────────────────────────────────────────────
-const MAT_BRUTO    = new THREE.MeshStandardMaterial({ color: '#c8922a', roughness: 0.85, metalness: 0.02 });
-const MAT_OSCURO   = new THREE.MeshStandardMaterial({ color: '#8b5e1a', roughness: 0.90, metalness: 0.02 });
-const MAT_ELIMINAR = new THREE.MeshStandardMaterial({ color: '#ef4444', transparent: true, opacity: 0.55, emissive: '#7f1d1d', emissiveIntensity: 0.5 });
-const MAT_GLOW     = new THREE.MeshStandardMaterial({ color: '#c8922a', roughness: 0.5,  metalness: 0.1, emissive: '#c8922a', emissiveIntensity: 0.4 });
+// ── Límites de fase ─────────────────────────────────────────────────────────
+const FASE_TRAZADO  = 33;
+const FASE_CORTADO  = 66;
+const FASE_ENSAMBLE = 100;
+
+// ── Materiales base ─────────────────────────────────────────────────────────
+const MAT_BRUTO  = new THREE.MeshStandardMaterial({ color: '#c8922a', roughness: 0.85, metalness: 0.02 });
+const MAT_OSCURO = new THREE.MeshStandardMaterial({ color: '#8b5e1a', roughness: 0.90, metalness: 0.02 });
+
+// ── Planos de corte para dividir el STL en dos mitades al eje X ─────────────
+// Three.js descarta donde dot(normal, point) + constant < 0
+const CLIP_MITAD_IZQ = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0); // mantiene x ≤ 0
+const CLIP_MITAD_DER = new THREE.Plane(new THREE.Vector3( 1, 0, 0), 0); // mantiene x ≥ 0
 
 // ── Habilitar clipping local ────────────────────────────────────────────────
 function EnableClipping() {
@@ -33,22 +40,20 @@ function EnableClipping() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// FASE 0–49%: geometría procedural (dos bloques + zonas de corte)
+// FASES 0–65%: Geometría procedural (bloques + overlay de trazado)
 // ══════════════════════════════════════════════════════════════════════════
 
-/** Configs de geometría por familia de unión */
 function getFamiliaConfig(familia) {
-  // Bloque A (izq.) y Bloque B (der.) + zonas a eliminar
   switch (familia) {
     case 'caja-espiga':
       return {
         bloqueA: [3.2, 5.0, 2.5],
         bloqueB: [3.2, 5.0, 2.5],
-        eliminarA: [{ args: [1.1, 2.8, 1.5], pos: [0, 0, 0], label: 'Caja (mortise)' }],
+        eliminarA: [{ args: [1.1, 2.8, 1.5], pos: [0, 0, 0] }],
         eliminarB: [
-          { args: [1.0, 2.7, 1.4], pos: [0,  0.0, 1.4], label: 'Espiga' },
-          { args: [1.1, 1.1, 2.5], pos: [0,  1.5, 0],   label: 'Hombro sup.' },
-          { args: [1.1, 1.1, 2.5], pos: [0, -1.5, 0],   label: 'Hombro inf.' },
+          { args: [1.0, 2.7, 1.4], pos: [0,  0.0, 1.4] },
+          { args: [1.1, 1.1, 2.5], pos: [0,  1.5, 0]   },
+          { args: [1.1, 1.1, 2.5], pos: [0, -1.5, 0]   },
         ],
       };
     case 'tarugo':
@@ -56,39 +61,39 @@ function getFamiliaConfig(familia) {
         bloqueA: [3.5, 4.5, 2.5],
         bloqueB: [3.5, 4.5, 2.5],
         eliminarA: [
-          { args: [0.5, 0.5, 1.2], pos: [0,  0.9, 0], label: 'Perf. sup.' },
-          { args: [0.5, 0.5, 1.2], pos: [0, -0.9, 0], label: 'Perf. inf.' },
+          { args: [0.5, 0.5, 1.2], pos: [0,  0.9, 0] },
+          { args: [0.5, 0.5, 1.2], pos: [0, -0.9, 0] },
         ],
         eliminarB: [
-          { args: [0.5, 0.5, 1.2], pos: [0,  0.9, 0], label: 'Perf. sup.' },
-          { args: [0.5, 0.5, 1.2], pos: [0, -0.9, 0], label: 'Perf. inf.' },
+          { args: [0.5, 0.5, 1.2], pos: [0,  0.9, 0] },
+          { args: [0.5, 0.5, 1.2], pos: [0, -0.9, 0] },
         ],
       };
     case 'horquilla':
       return {
         bloqueA: [3.5, 4.5, 2.5],
         bloqueB: [3.5, 4.5, 2.5],
-        eliminarA: [{ args: [1.2, 1.8, 2.5], pos: [0, 0, 0], label: 'Ranura horquilla' }],
+        eliminarA: [{ args: [1.2, 1.8, 2.5], pos: [0, 0, 0] }],
         eliminarB: [
-          { args: [1.05, 2.5, 2.5], pos: [-1.0, 0, 0], label: 'Rebaje izq.' },
-          { args: [1.05, 2.5, 2.5], pos: [ 1.0, 0, 0], label: 'Rebaje der.' },
+          { args: [1.05, 2.5, 2.5], pos: [-1.0, 0, 0] },
+          { args: [1.05, 2.5, 2.5], pos: [ 1.0, 0, 0] },
         ],
       };
     case 'media-madera':
       return {
         bloqueA: [4.0, 4.0, 2.5],
         bloqueB: [4.0, 4.0, 2.5],
-        eliminarA: [{ args: [4.0, 2.0, 1.3], pos: [0,  1.0, 0.6], label: 'Rebaje ½ sup.' }],
-        eliminarB: [{ args: [4.0, 2.0, 1.3], pos: [0, -1.0, 0.6], label: 'Rebaje ½ inf.' }],
+        eliminarA: [{ args: [4.0, 2.0, 1.3], pos: [0,  1.0, 0.6] }],
+        eliminarB: [{ args: [4.0, 2.0, 1.3], pos: [0, -1.0, 0.6] }],
       };
     case 'cola-milano':
       return {
         bloqueA: [3.5, 5.0, 2.5],
         bloqueB: [3.5, 5.0, 2.5],
-        eliminarA: [{ args: [1.4, 3.2, 1.5], pos: [0, 0, 0], label: 'Canal cola' }],
+        eliminarA: [{ args: [1.4, 3.2, 1.5], pos: [0, 0, 0] }],
         eliminarB: [
-          { args: [0.8, 1.2, 2.5], pos: [-0.9, 0, 0], label: 'Canto izq.' },
-          { args: [0.8, 1.2, 2.5], pos: [ 0.9, 0, 0], label: 'Canto der.' },
+          { args: [0.8, 1.2, 2.5], pos: [-0.9, 0, 0] },
+          { args: [0.8, 1.2, 2.5], pos: [ 0.9, 0, 0] },
         ],
       };
     case 'machihembrada':
@@ -96,53 +101,53 @@ function getFamiliaConfig(familia) {
       return {
         bloqueA: [4.0, 2.5, 3.0],
         bloqueB: [4.0, 2.5, 3.0],
-        eliminarA: [{ args: [4.0, 0.6, 1.0], pos: [0, 0, 0.5], label: 'Ranura' }],
-        eliminarB: [{ args: [4.0, 0.55, 1.0], pos: [0, 0, -0.5], label: 'Lengüeta' }],
+        eliminarA: [{ args: [4.0, 0.6, 1.0], pos: [0, 0,  0.5] }],
+        eliminarB: [{ args: [4.0, 0.55, 1.0], pos: [0, 0, -0.5] }],
       };
   }
 }
 
 function BloquesEnBruto({ familia, progreso }) {
   const cfg = getFamiliaConfig(familia);
-  // Separación entre bloques: disminuye de 3→1.5 mientras progreso 0→50
-  const sep = 3.0 - (progreso / 50) * 1.5;
-  const highlightOpacity = progreso < 20 ? 0
-    : progreso < 35 ? (progreso - 20) / 15
-    : progreso < 45 ? 1
-    : (1 - (progreso - 45) / 5);
+  const SEP = 2.2; // separación fija entre bloques
+
+  const mostrarTrazado = progreso >= FASE_TRAZADO;
+  // Aparición rápida del overlay rojo al entrar en fase Trazado
+  const opTrazado = mostrarTrazado
+    ? Math.min(1, (progreso - FASE_TRAZADO) / 8) * 0.65
+    : 0;
 
   return (
     <group>
       {/* Bloque A */}
-      <group position={[-sep - cfg.bloqueA[0] / 2, 0, 0]}>
+      <group position={[-SEP - cfg.bloqueA[0] / 2, 0, 0]}>
         <mesh castShadow receiveShadow material={MAT_BRUTO}>
           <boxGeometry args={cfg.bloqueA} />
         </mesh>
-        {/* Zonas a eliminar de A */}
-        {progreso >= 20 && cfg.eliminarA.map((z, i) => (
-          <mesh key={i} position={z.pos} castShadow>
+        {cfg.eliminarA.map((z, i) => (
+          <mesh key={i} position={z.pos}>
             <boxGeometry args={z.args} />
             <meshStandardMaterial
-              color="#ef4444" transparent
-              opacity={highlightOpacity * 0.6}
-              emissive="#7f1d1d" emissiveIntensity={0.5}
+              color="#ef4444" transparent opacity={opTrazado}
+              emissive="#7f1d1d" emissiveIntensity={0.6}
+              depthWrite={false}
             />
           </mesh>
         ))}
       </group>
 
       {/* Bloque B */}
-      <group position={[sep + cfg.bloqueB[0] / 2, 0, 0]}>
+      <group position={[SEP + cfg.bloqueB[0] / 2, 0, 0]}>
         <mesh castShadow receiveShadow material={MAT_OSCURO}>
           <boxGeometry args={cfg.bloqueB} />
         </mesh>
-        {progreso >= 20 && cfg.eliminarB.map((z, i) => (
-          <mesh key={i} position={z.pos} castShadow>
+        {cfg.eliminarB.map((z, i) => (
+          <mesh key={i} position={z.pos}>
             <boxGeometry args={z.args} />
             <meshStandardMaterial
-              color="#ef4444" transparent
-              opacity={highlightOpacity * 0.6}
-              emissive="#7f1d1d" emissiveIntensity={0.5}
+              color="#ef4444" transparent opacity={opTrazado}
+              emissive="#7f1d1d" emissiveIntensity={0.6}
+              depthWrite={false}
             />
           </mesh>
         ))}
@@ -152,10 +157,10 @@ function BloquesEnBruto({ familia, progreso }) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// FASE 50–100%: STL real con plano de corte + glow final
+// FASES 66–100%: STL real dividido en dos mitades con gap que se cierra
 // ══════════════════════════════════════════════════════════════════════════
 
-function STLFabricacion({ url, progreso, mostrarCotas, tolerancias }) {
+function STLPiezas({ url, progreso, mostrarCotas, tolerancias }) {
   const rawGeo = useLoader(STLLoader, url);
 
   const geometry = useMemo(() => {
@@ -164,99 +169,116 @@ function STLFabricacion({ url, progreso, mostrarCotas, tolerancias }) {
     geo.center();
     const size = new THREE.Vector3();
     geo.boundingBox.getSize(size);
-    const scale = 5.2 / Math.max(size.x, size.y, size.z);
-    geo.scale(scale, scale, scale);
+    const escala = 5.2 / Math.max(size.x, size.y, size.z);
+    geo.scale(escala, escala, escala);
     geo.computeBoundingBox();
     geo.computeVertexNormals();
     return geo;
   }, [rawGeo]);
 
   const bbox = geometry.boundingBox;
-  const modelH = bbox.max.y - bbox.min.y;
+  const ensamblado = progreso >= FASE_ENSAMBLE;
 
-  // Plano de corte Y descendente (50%→75%: corta; 75%→100%: se retira)
-  const clipPlane = useRef(new THREE.Plane(new THREE.Vector3(0, -1, 0), bbox.max.y + 0.5));
-  const currentClipY = useRef(bbox.max.y + 0.5);
+  // t: 0 cuando progreso=66%, 1 cuando progreso=100%
+  const t = Math.max(0, Math.min(1, (progreso - FASE_CORTADO) / (FASE_ENSAMBLE - FASE_CORTADO)));
+  // Gap animado: comienza en 2.5 unidades, llega a 0 al ensamblarse
+  const gap = ensamblado ? 0 : (1 - t) * 2.5;
 
-  useFrame(() => {
-    let targetClipY;
-    if (progreso <= 50) {
-      targetClipY = bbox.max.y + 0.5; // sin corte
-    } else if (progreso <= 75) {
-      // Sweep de top → 30% del modelo
-      const t = (progreso - 50) / 25;
-      targetClipY = bbox.max.y + 0.5 - t * (modelH * 0.70 + 0.5);
-    } else {
-      // Retira el plano gradualmente
-      const t = (progreso - 75) / 25;
-      const minClip = bbox.max.y + 0.5 - (modelH * 0.70 + 0.5);
-      targetClipY = minClip + t * (modelH * 0.70 + 0.5);
+  // Glow pulsante al ensamblarse completamente
+  const matRef = useRef();
+  useFrame(({ clock }) => {
+    if (matRef.current && ensamblado) {
+      matRef.current.emissiveIntensity = 0.22 + Math.sin(clock.getElapsedTime() * 2.5) * 0.13;
     }
-    currentClipY.current += (targetClipY - currentClipY.current) * 0.08;
-    clipPlane.current.constant = currentClipY.current;
   });
-
-  // Glow en fase de ensamblaje (progreso > 85)
-  const glowIntensity = progreso > 85 ? (progreso - 85) / 15 * 0.5 : 0;
 
   return (
     <group>
-      {/* Cara exterior — madera clara */}
-      <mesh castShadow receiveShadow geometry={geometry}>
-        <meshStandardMaterial
-          color="#c8922a" roughness={0.75} metalness={0.04}
-          side={THREE.FrontSide}
-          clippingPlanes={[clipPlane.current]}
-          clipShadows
-          emissive="#c8922a"
-          emissiveIntensity={glowIntensity}
-        />
-      </mesh>
-
-      {/* Cara interior sección — madera oscura */}
-      <mesh geometry={geometry}>
-        <meshStandardMaterial
-          color="#7a4a1a" roughness={0.9} metalness={0.0}
-          side={THREE.BackSide}
-          clippingPlanes={[clipPlane.current]}
-        />
-      </mesh>
-
-      {/* Línea de separación visual (fase 75–85%) */}
-      {progreso >= 75 && progreso < 90 && (
-        <mesh position={[0, 0, 0]}>
-          <boxGeometry args={[
-            (bbox.max.x - bbox.min.x) * 1.1,
-            0.04,
-            (bbox.max.z - bbox.min.z) * 1.1,
-          ]} />
+      {ensamblado ? (
+        /* ── Ensamblaje completo: modelo unido con glow ── */
+        <mesh castShadow receiveShadow geometry={geometry}>
           <meshStandardMaterial
-            color="#3b82f6"
-            transparent
-            opacity={Math.max(0, (progreso < 80 ? 0.7 : (1 - (progreso - 80) / 10) * 0.7))}
-            emissive="#1d4ed8"
-            emissiveIntensity={0.6}
+            ref={matRef}
+            color="#c8922a" roughness={0.55} metalness={0.1}
+            emissive="#c8922a" emissiveIntensity={0.3}
           />
         </mesh>
+      ) : (
+        /* ── Dos mitades separadas por gap ── */
+        <>
+          {/* Mitad izquierda (x ≤ 0) */}
+          <group position={[-gap, 0, 0]}>
+            <mesh castShadow receiveShadow geometry={geometry}>
+              <meshStandardMaterial
+                color="#c8922a" roughness={0.75} metalness={0.04}
+                side={THREE.FrontSide}
+                clippingPlanes={[CLIP_MITAD_IZQ]}
+              />
+            </mesh>
+            {/* Cara de sección interior (BackSide muestra el corte) */}
+            <mesh geometry={geometry}>
+              <meshStandardMaterial
+                color="#7a4a1a" roughness={0.9}
+                side={THREE.BackSide}
+                clippingPlanes={[CLIP_MITAD_IZQ]}
+              />
+            </mesh>
+          </group>
+
+          {/* Mitad derecha (x ≥ 0) */}
+          <group position={[gap, 0, 0]}>
+            <mesh castShadow receiveShadow geometry={geometry}>
+              <meshStandardMaterial
+                color="#8b5e1a" roughness={0.85} metalness={0.02}
+                side={THREE.FrontSide}
+                clippingPlanes={[CLIP_MITAD_DER]}
+              />
+            </mesh>
+            <mesh geometry={geometry}>
+              <meshStandardMaterial
+                color="#5a3a0a" roughness={0.9}
+                side={THREE.BackSide}
+                clippingPlanes={[CLIP_MITAD_DER]}
+              />
+            </mesh>
+          </group>
+
+          {/* Línea azul de unión — aparece cuando las piezas se acercan */}
+          {gap < 1.8 && (
+            <mesh>
+              <boxGeometry args={[
+                0.06,
+                (bbox.max.y - bbox.min.y) * 1.1,
+                (bbox.max.z - bbox.min.z) * 1.1,
+              ]} />
+              <meshStandardMaterial
+                color="#3b82f6" transparent
+                opacity={(1 - gap / 1.8) * 0.75}
+                emissive="#1d4ed8" emissiveIntensity={0.6}
+                depthWrite={false}
+              />
+            </mesh>
+          )}
+        </>
       )}
 
       {/* Cotas / Tolerancias */}
-      {mostrarCotas && tolerancias?.map((t, i) => {
-        // Distribuye las tarjetas alrededor del modelo
+      {mostrarCotas && tolerancias?.map((tol, i) => {
         const angle = (i / tolerancias.length) * Math.PI - Math.PI / 4;
         const r = (bbox.max.x - bbox.min.x) * 0.7 + 1.5;
-        const posX = Math.cos(angle) * r;
-        const posY = bbox.max.y * 0.4 - i * 1.4;
-        const posZ = Math.sin(angle) * r;
         return (
-          <Html key={i} position={[posX, posY, posZ]} distanceFactor={8} center>
+          <Html
+            key={i}
+            position={[Math.cos(angle) * r, bbox.max.y * 0.4 - i * 1.4, Math.sin(angle) * r]}
+            distanceFactor={8} center
+          >
             <div className="le-cota-card">
-              <div className="le-cota-parte">{t.parte}</div>
+              <div className="le-cota-parte">{tol.parte}</div>
               <div className="le-cota-values">
-                <span className="le-cota-nominal">{t.nominal}</span>
-                <span className="le-cota-real">{t.real}</span>
+                <span className="le-cota-nominal">{tol.nominal}</span>
+                <span className="le-cota-real">{tol.real}</span>
               </div>
-              <div className="le-cota-nota">{t.nota}</div>
+              <div className="le-cota-nota">{tol.nota}</div>
             </div>
           </Html>
         );
@@ -282,32 +304,21 @@ function LoadingFallback() {
 // Componente público: VisorCanvas
 // ══════════════════════════════════════════════════════════════════════════
 
-/**
- * @param {Object}  modelo        { id, label, stl, familia, tolerancias }
- * @param {number}  progreso      0–100 (línea de tiempo)
- * @param {boolean} mostrarCotas  Activa el overlay de cotas/tolerancias
- */
 export default function VisorCanvas({ modelo, progreso, mostrarCotas }) {
   if (!modelo) return null;
 
-  const usarSTL = progreso >= 45;
-  // Opacidad: fade out bloques (45→55%), fade in STL (45→55%)
-  const stlOpacity    = progreso < 45 ? 0 : progreso < 55 ? (progreso - 45) / 10 : 1;
-  const bloquesOpacity = progreso < 45 ? 1 : progreso < 55 ? 1 - (progreso - 45) / 10 : 0;
+  // Cambio limpio entre fases — sin crossfade
+  const mostrarSTL = progreso >= FASE_CORTADO;
 
   return (
-    <Canvas
-      camera={{ position: [4, 4, 8], fov: 44 }}
-      shadows
-      gl={{ antialias: true, alpha: false }}
-    >
+    <Canvas camera={{ position: [4, 4, 8], fov: 44 }} shadows gl={{ antialias: true }}>
       <color attach="background" args={['#0f172a']} />
-
       <EnableClipping />
 
       {/* Iluminación */}
       <ambientLight intensity={0.38} />
-      <directionalLight position={[6, 10, 6]} intensity={1.5} castShadow
+      <directionalLight
+        position={[6, 10, 6]} intensity={1.5} castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-camera-left={-8} shadow-camera-right={8}
         shadow-camera-top={8}  shadow-camera-bottom={-8}
@@ -315,17 +326,15 @@ export default function VisorCanvas({ modelo, progreso, mostrarCotas }) {
       <directionalLight position={[-5, 4, -5]} intensity={0.3} color="#a0c4ff" />
       <pointLight position={[0, 8, 0]} intensity={0.4} color="#fff5e0" />
 
-      {/* ── Bloques procedurales (fases 0–54%) ── */}
-      {bloquesOpacity > 0.01 && (
-        <group>
-          <BloquesEnBruto familia={modelo.familia} progreso={progreso} />
-        </group>
+      {/* Fases 0–65%: bloques procedurales */}
+      {!mostrarSTL && (
+        <BloquesEnBruto familia={modelo.familia} progreso={progreso} />
       )}
 
-      {/* ── STL real (fases 45–100%) ── */}
-      {usarSTL && (
+      {/* Fases 66–100%: STL dividido → unido */}
+      {mostrarSTL && (
         <Suspense fallback={<LoadingFallback />}>
-          <STLFabricacion
+          <STLPiezas
             url={modelo.stl}
             progreso={progreso}
             mostrarCotas={mostrarCotas}
@@ -342,10 +351,8 @@ export default function VisorCanvas({ modelo, progreso, mostrarCotas }) {
         sectionSize={2.4} sectionThickness={1} sectionColor="#334155"
         fadeDistance={22} fadeStrength={1} followCamera={false}
       />
-
       <OrbitControls
-        makeDefault
-        enablePan enableZoom
+        makeDefault enablePan enableZoom
         minDistance={4} maxDistance={24}
         minPolarAngle={0.15} maxPolarAngle={Math.PI / 1.85}
       />

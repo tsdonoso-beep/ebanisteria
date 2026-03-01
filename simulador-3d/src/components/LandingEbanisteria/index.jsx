@@ -4,37 +4,41 @@
  * Pantalla de catálogo interactivo del Taller de Ebanistería.
  * Tres zonas:
  *   1. Menú Lateral  — Catálogo tipo acordeón (Ensambles / Juntas / Empalmes)
- *   2. Lienzo 3D     — Visor de fabricación con línea de tiempo
- *   3. Panel Inferior — Slider de fases + herramientas (Cotas, Rayos X)
+ *   2. Lienzo 3D     — Visor con 4 fases de fabricación
+ *   3. Panel Inferior — Slider + botón Ensamblar + herramienta Cotas
  *
  * Plataforma: MSE-SFT Ebanistería — PRONIED / MINEDU
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import MenuLateral from './MenuLateral';
 import VisorCanvas from './VisorCanvas';
 import { CATEGORIAS, FASE_LABELS } from './catalogoData';
 import './styles.css';
 
-// Modelo inicial por defecto: N2 – Ensamble a Caja y Espiga
+// Modelo inicial: N2 – Ensamble a Caja y Espiga
 const MODELO_DEFAULT = { ...CATEGORIAS[0].items[1], categoria: CATEGORIAS[0].label };
 
-// ── Icono SVG: regla de cotas ────────────────────────────────────────────────
+// ── Iconos SVG ───────────────────────────────────────────────────────────────
 const IconCotas = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
     <path d="M21 10H3M21 6l-4 4 4 4M3 6l4 4-4 4" />
   </svg>
 );
 
-// ── Icono SVG: rayos X (transparencia) ──────────────────────────────────────
-const IconXRay = () => (
+const IconEnsamblar = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-    <circle cx="12" cy="12" r="9" />
-    <path d="M12 3v18M3 12h18M6.3 6.3l11.4 11.4M17.7 6.3L6.3 17.7" />
+    <path d="M5 12h14M12 5l7 7-7 7" />
   </svg>
 );
 
-// ── Obtener la fase activa (0–4) y su info según el progreso ────────────────
+const IconSeparar = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+    <path d="M19 12H5M12 19l-7-7 7-7" />
+  </svg>
+);
+
+// ── Fase activa según progreso ───────────────────────────────────────────────
 function getFaseInfo(progreso) {
   let idx = 0;
   for (let i = FASE_LABELS.length - 1; i >= 0; i--) {
@@ -45,14 +49,17 @@ function getFaseInfo(progreso) {
 
 // ── Componente principal ─────────────────────────────────────────────────────
 export default function LandingEbanisteria() {
-  const [modelo,      setModelo]      = useState(MODELO_DEFAULT);
-  const [progreso,    setProgreso]    = useState(0);
-  const [modoCotas,   setModoCotas]   = useState(false);
-  const [modoXRay,    setModoXRay]    = useState(false);
-  // key para forzar remount del Canvas cuando cambia el modelo
-  const [canvasKey,   setCanvasKey]   = useState(0);
+  const [modelo,    setModelo]    = useState(MODELO_DEFAULT);
+  const [progreso,  setProgreso]  = useState(0);
+  const [modoCotas, setModoCotas] = useState(false);
+  const [canvasKey, setCanvasKey] = useState(0);
+  const animRef = useRef(null);
+
+  // Limpiar animación al desmontar
+  useEffect(() => () => { if (animRef.current) cancelAnimationFrame(animRef.current); }, []);
 
   const handleSelectModelo = useCallback((m) => {
+    if (animRef.current) cancelAnimationFrame(animRef.current);
     setModelo(m);
     setProgreso(0);
     setModoCotas(false);
@@ -60,19 +67,41 @@ export default function LandingEbanisteria() {
   }, []);
 
   const handleProgreso = useCallback((e) => {
+    if (animRef.current) cancelAnimationFrame(animRef.current);
     setProgreso(Number(e.target.value));
   }, []);
 
-  // Si activan Cotas automáticamente llevar slider a fase 75 (Posicionamiento)
   const handleCotas = useCallback(() => {
     setModoCotas(v => {
-      if (!v && progreso < 50) setProgreso(75);
+      // Ir a fase "Pieza cortada" para que las cotas tengan contexto
+      if (!v && progreso < 66) setProgreso(66);
       return !v;
     });
   }, [progreso]);
 
-  const faseInfo = getFaseInfo(progreso);
-  const progressPct = `${progreso}%`;
+  // Botón "Ensamblar": anima el slider hasta 100%.
+  // Si ya está ensamblado, vuelve a la fase "Pieza cortada" (66%).
+  const handleEnsamblar = useCallback(() => {
+    if (animRef.current) cancelAnimationFrame(animRef.current);
+
+    if (progreso >= 100) {
+      setProgreso(66);
+      return;
+    }
+
+    const step = () => {
+      setProgreso(prev => {
+        const next = Math.min(100, prev + 1.2);
+        if (next < 100) animRef.current = requestAnimationFrame(step);
+        return next;
+      });
+    };
+    animRef.current = requestAnimationFrame(step);
+  }, [progreso]);
+
+  const faseInfo      = getFaseInfo(progreso);
+  const enPiezaCortada = progreso >= 66;
+  const ensamblado     = progreso >= 100;
 
   return (
     <div className="le-root">
@@ -91,7 +120,7 @@ export default function LandingEbanisteria() {
             key={canvasKey}
             modelo={modelo}
             progreso={progreso}
-            mostrarCotas={modoCotas && progreso >= 50}
+            mostrarCotas={modoCotas}
           />
 
           {/* Badge: modelo activo */}
@@ -107,9 +136,16 @@ export default function LandingEbanisteria() {
           </div>
 
           {/* Banner modo cotas */}
-          {modoCotas && progreso >= 50 && (
+          {modoCotas && enPiezaCortada && (
             <div className="le-cotas-banner">
               📐 Modo Cotas y Tolerancias activo
+            </div>
+          )}
+
+          {/* Banner ensamblaje completo */}
+          {ensamblado && (
+            <div className="le-ensamble-banner">
+              ✓ Ensamblaje completo
             </div>
           )}
         </div>
@@ -124,7 +160,10 @@ export default function LandingEbanisteria() {
                 key={i}
                 className={`le-phase-tick ${faseInfo.idx === i ? 'le-phase-tick--active' : ''}`}
                 title={f.desc}
-                onClick={() => setProgreso(f.pct)}
+                onClick={() => {
+                  if (animRef.current) cancelAnimationFrame(animRef.current);
+                  setProgreso(f.pct);
+                }}
                 style={{ cursor: 'pointer' }}
               >
                 <div className="le-phase-tick-dot" />
@@ -140,7 +179,7 @@ export default function LandingEbanisteria() {
             value={progreso}
             onChange={handleProgreso}
             className="le-timeline-slider"
-            style={{ '--progress': progressPct }}
+            style={{ '--progress': `${progreso}%` }}
             aria-label="Línea de tiempo de fabricación"
           />
 
@@ -151,23 +190,26 @@ export default function LandingEbanisteria() {
             </p>
 
             <div className="le-tools">
+              {/* Botón Ensamblar — aparece en fase "Pieza cortada" */}
+              {enPiezaCortada && (
+                <button
+                  className={`le-tool-btn le-tool-btn--ensamblar ${ensamblado ? 'le-tool-btn--active' : ''}`}
+                  onClick={handleEnsamblar}
+                  title={ensamblado ? 'Volver a ver las piezas separadas' : 'Animar el ensamblaje de las dos piezas'}
+                >
+                  {ensamblado ? <IconSeparar /> : <IconEnsamblar />}
+                  {ensamblado ? 'Separar piezas' : 'Ensamblar piezas'}
+                </button>
+              )}
+
+              {/* Botón Cotas */}
               <button
                 className={`le-tool-btn ${modoCotas ? 'le-tool-btn--active' : ''}`}
                 onClick={handleCotas}
                 title="Activa las cotas de dimensión y tolerancias técnicas"
               >
                 <IconCotas />
-                {modoCotas ? 'Ocultar Cotas' : 'Ver Cotas y Tolerancias'}
-              </button>
-
-              <button
-                className={`le-tool-btn ${modoXRay ? 'le-tool-btn--active' : ''}`}
-                onClick={() => setModoXRay(v => !v)}
-                title="Vista de Rayos X (próximamente)"
-                disabled
-              >
-                <IconXRay />
-                Rayos X
+                {modoCotas ? 'Ocultar Cotas' : 'Ver Cotas'}
               </button>
             </div>
           </div>

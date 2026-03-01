@@ -338,6 +338,23 @@
   color: #93c5fd;
 }
 
+/* Botón Ensamblar piezas — resaltado en dorado */
+.le-tool-btn--ensamblar {
+  background: rgba(200, 146, 42, 0.14);
+  border-color: #c8922a;
+  color: #f1c46a;
+}
+.le-tool-btn--ensamblar:hover {
+  background: rgba(200, 146, 42, 0.26);
+  border-color: #e0a83e;
+  color: #fde68a;
+}
+.le-tool-btn--ensamblar.le-tool-btn--active {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
    CARD DE COTA / TOLERANCIA (Html overlay en el canvas)
 ══════════════════════════════════════════════════════════════════════════ */
@@ -373,6 +390,30 @@
 .le-cota-nominal { font-size: 10px; color: #64748b; text-decoration: line-through; }
 .le-cota-real    { font-size: 13px; font-weight: 800; color: #c8922a; }
 .le-cota-nota    { font-size: 10px; color: #64748b; line-height: 1.4; }
+
+/* Indicador de "Ensamblaje completo" */
+.le-ensamble-banner {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  background: rgba(200, 146, 42, 0.18);
+  border: 1px solid rgba(200, 146, 42, 0.5);
+  color: #f1c46a;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 16px;
+  border-radius: 20px;
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 10;
+  animation: le-fadeIn 0.4s ease;
+}
+
+@keyframes le-fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
 /* Indicador de "Modo Cotas activo" */
 .le-cotas-banner {

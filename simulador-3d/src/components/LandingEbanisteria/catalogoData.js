@@ -138,11 +138,10 @@ export const MODELOS_MAP = Object.fromEntries(
   CATEGORIAS.flatMap(cat => cat.items.map(item => [item.id, { ...item, categoria: cat.label }]))
 );
 
-// Labels for the 5 manufacturing phases
+// Labels para las 4 fases de fabricación
 export const FASE_LABELS = [
-  { pct: 0,   label: 'Bloques en bruto',     desc: 'Material en PVC/madera sin ningún corte.' },
-  { pct: 25,  label: 'Trazado y marcado',    desc: 'Se marca el material a eliminar (resaltado en rojo).' },
-  { pct: 50,  label: 'Corte y perfilado',    desc: 'El material sobrante se remueve; aparece el perfil de la unión.' },
-  { pct: 75,  label: 'Posicionamiento',      desc: 'Las piezas se alinean frente a frente listas para ensamblar.' },
-  { pct: 100, label: 'Ensamblaje completo',  desc: 'Las piezas se insertan y quedan perfectamente unidas.' },
+  { pct: 0,   label: 'Bloque en bruto',  desc: 'Maderos en bruto sin ningún corte ni marcado.' },
+  { pct: 33,  label: 'Trazado',          desc: 'Se marca en rojo la zona a retirar con la herramienta.' },
+  { pct: 66,  label: 'Pieza cortada',    desc: 'Material sobrante retirado; se aprecian los perfiles de la unión separada.' },
+  { pct: 100, label: 'Ensamblaje',       desc: 'Las dos piezas encajan perfectamente formando la unión.' },
 ];
