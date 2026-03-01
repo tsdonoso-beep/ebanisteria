@@ -74,7 +74,7 @@ export default function LandingEbanisteria() {
   const handleCotas = useCallback(() => {
     setModoCotas(v => {
       // Ir a fase "Pieza cortada" para que las cotas tengan contexto
-      if (!v && progreso < 66) setProgreso(66);
+      if (!v && progreso < 50) setProgreso(50);
       return !v;
     });
   }, [progreso]);
@@ -85,7 +85,7 @@ export default function LandingEbanisteria() {
     if (animRef.current) cancelAnimationFrame(animRef.current);
 
     if (progreso >= 100) {
-      setProgreso(66);
+      setProgreso(50);
       return;
     }
 
@@ -100,7 +100,7 @@ export default function LandingEbanisteria() {
   }, [progreso]);
 
   const faseInfo      = getFaseInfo(progreso);
-  const enPiezaCortada = progreso >= 66;
+  const enPiezaCortada = progreso >= 50;
   const ensamblado     = progreso >= 100;
 
   return (

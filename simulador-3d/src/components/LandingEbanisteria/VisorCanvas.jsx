@@ -1,13 +1,13 @@
 /**
  * VisorCanvas.jsx
- * Visor 3D con línea de tiempo de fabricación en 4 fases claras:
+ * Visor 3D con línea de tiempo de fabricación en 4 fases:
  *
- *   0–32%   → Bloque en bruto: dos maderos sólidos sin cortes
- *   33–65%  → Trazado: zonas de corte resaltadas en rojo
- *   66–99%  → Pieza cortada: STL dividido en dos mitades con gap animado
- *   100%    → Ensamblaje: las piezas se unen con glow ambarino
+ *   0–24%   → Bloque en bruto: dos maderos apilados en eje Y (arriba / abajo)
+ *   25–49%  → Trazado: zonas de corte resaltadas en rojo en cada bloque
+ *   50–79%  → Pieza cortada: STL dividido en mitad superior e inferior
+ *   80–100% → Ensamblaje: la pieza de arriba baja y se une con la de abajo
  *
- * El gap entre piezas se cierra al avanzar el slider de 66 → 100%.
+ * El gap entre piezas se cierra al avanzar el slider de 50 → 100%.
  * El botón "Ensamblar piezas" anima automáticamente el slider hasta 100%.
  */
 
@@ -19,18 +19,17 @@ import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import * as THREE from 'three';
 
 // ── Límites de fase ─────────────────────────────────────────────────────────
-const FASE_TRAZADO  = 33;
-const FASE_CORTADO  = 66;
-const FASE_ENSAMBLE = 100;
+const FASE_TRAZADO  = 25;
+const FASE_CORTADO  = 50;
+const FASE_ENSAMBLE = 80;
 
 // ── Materiales base ─────────────────────────────────────────────────────────
 const MAT_BRUTO  = new THREE.MeshStandardMaterial({ color: '#c8922a', roughness: 0.85, metalness: 0.02 });
 const MAT_OSCURO = new THREE.MeshStandardMaterial({ color: '#8b5e1a', roughness: 0.90, metalness: 0.02 });
 
-// ── Planos de corte para dividir el STL en dos mitades al eje X ─────────────
-// Three.js descarta donde dot(normal, point) + constant < 0
-const CLIP_MITAD_IZQ = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0); // mantiene x ≤ 0
-const CLIP_MITAD_DER = new THREE.Plane(new THREE.Vector3( 1, 0, 0), 0); // mantiene x ≥ 0
+// ── Planos de corte para dividir el STL en mitad superior / inferior (eje Y) ─
+const CLIP_ABAJO  = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0); // mantiene y ≤ 0
+const CLIP_ARRIBA = new THREE.Plane(new THREE.Vector3(0,  1, 0), 0); // mantiene y ≥ 0
 
 // ── Habilitar clipping local ────────────────────────────────────────────────
 function EnableClipping() {
@@ -40,7 +39,7 @@ function EnableClipping() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// FASES 0–65%: Geometría procedural (bloques + overlay de trazado)
+// FASES 0–49%: Geometría procedural (bloques apilados + overlay de trazado)
 // ══════════════════════════════════════════════════════════════════════════
 
 function getFamiliaConfig(familia) {
@@ -109,7 +108,7 @@ function getFamiliaConfig(familia) {
 
 function BloquesEnBruto({ familia, progreso }) {
   const cfg = getFamiliaConfig(familia);
-  const SEP = 2.2; // separación fija entre bloques
+  const GAP = 1.0; // separación entre bloques en eje Y
 
   const mostrarTrazado = progreso >= FASE_TRAZADO;
   // Aparición rápida del overlay rojo al entrar en fase Trazado
@@ -119,8 +118,8 @@ function BloquesEnBruto({ familia, progreso }) {
 
   return (
     <group>
-      {/* Bloque A */}
-      <group position={[-SEP - cfg.bloqueA[0] / 2, 0, 0]}>
+      {/* Bloque A — abajo */}
+      <group position={[0, -(GAP / 2 + cfg.bloqueA[1] / 2), 0]}>
         <mesh castShadow receiveShadow material={MAT_BRUTO}>
           <boxGeometry args={cfg.bloqueA} />
         </mesh>
@@ -136,8 +135,8 @@ function BloquesEnBruto({ familia, progreso }) {
         ))}
       </group>
 
-      {/* Bloque B */}
-      <group position={[SEP + cfg.bloqueB[0] / 2, 0, 0]}>
+      {/* Bloque B — arriba */}
+      <group position={[0, (GAP / 2 + cfg.bloqueB[1] / 2), 0]}>
         <mesh castShadow receiveShadow material={MAT_OSCURO}>
           <boxGeometry args={cfg.bloqueB} />
         </mesh>
@@ -157,7 +156,7 @@ function BloquesEnBruto({ familia, progreso }) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// FASES 66–100%: STL real dividido en dos mitades con gap que se cierra
+// FASES 50–100%: STL real dividido en arriba / abajo con gap que se cierra
 // ══════════════════════════════════════════════════════════════════════════
 
 function STLPiezas({ url, progreso, mostrarCotas, tolerancias }) {
@@ -171,16 +170,19 @@ function STLPiezas({ url, progreso, mostrarCotas, tolerancias }) {
     geo.boundingBox.getSize(size);
     const escala = 5.2 / Math.max(size.x, size.y, size.z);
     geo.scale(escala, escala, escala);
+    // Rotar 90° alrededor de Z para que la interfaz de unión quede en el eje Y
+    geo.applyMatrix4(new THREE.Matrix4().makeRotationZ(Math.PI / 2));
+    geo.center();
     geo.computeBoundingBox();
     geo.computeVertexNormals();
     return geo;
   }, [rawGeo]);
 
   const bbox = geometry.boundingBox;
-  const ensamblado = progreso >= FASE_ENSAMBLE;
+  const ensamblado = progreso >= 100;
 
-  // t: 0 cuando progreso=66%, 1 cuando progreso=100%
-  const t = Math.max(0, Math.min(1, (progreso - FASE_CORTADO) / (FASE_ENSAMBLE - FASE_CORTADO)));
+  // t: 0 cuando progreso=50%, 1 cuando progreso=100%
+  const t = Math.max(0, Math.min(1, (progreso - FASE_CORTADO) / (100 - FASE_CORTADO)));
   // Gap animado: comienza en 2.5 unidades, llega a 0 al ensamblarse
   const gap = ensamblado ? 0 : (1 - t) * 2.5;
 
@@ -204,15 +206,15 @@ function STLPiezas({ url, progreso, mostrarCotas, tolerancias }) {
           />
         </mesh>
       ) : (
-        /* ── Dos mitades separadas por gap ── */
+        /* ── Dos mitades separadas por gap en eje Y ── */
         <>
-          {/* Mitad izquierda (x ≤ 0) */}
-          <group position={[-gap, 0, 0]}>
+          {/* Mitad inferior (y ≤ 0) — pieza de abajo */}
+          <group position={[0, -gap, 0]}>
             <mesh castShadow receiveShadow geometry={geometry}>
               <meshStandardMaterial
                 color="#c8922a" roughness={0.75} metalness={0.04}
                 side={THREE.FrontSide}
-                clippingPlanes={[CLIP_MITAD_IZQ]}
+                clippingPlanes={[CLIP_ABAJO]}
               />
             </mesh>
             {/* Cara de sección interior (BackSide muestra el corte) */}
@@ -220,35 +222,35 @@ function STLPiezas({ url, progreso, mostrarCotas, tolerancias }) {
               <meshStandardMaterial
                 color="#7a4a1a" roughness={0.9}
                 side={THREE.BackSide}
-                clippingPlanes={[CLIP_MITAD_IZQ]}
+                clippingPlanes={[CLIP_ABAJO]}
               />
             </mesh>
           </group>
 
-          {/* Mitad derecha (x ≥ 0) */}
-          <group position={[gap, 0, 0]}>
+          {/* Mitad superior (y ≥ 0) — pieza de arriba */}
+          <group position={[0, gap, 0]}>
             <mesh castShadow receiveShadow geometry={geometry}>
               <meshStandardMaterial
                 color="#8b5e1a" roughness={0.85} metalness={0.02}
                 side={THREE.FrontSide}
-                clippingPlanes={[CLIP_MITAD_DER]}
+                clippingPlanes={[CLIP_ARRIBA]}
               />
             </mesh>
             <mesh geometry={geometry}>
               <meshStandardMaterial
                 color="#5a3a0a" roughness={0.9}
                 side={THREE.BackSide}
-                clippingPlanes={[CLIP_MITAD_DER]}
+                clippingPlanes={[CLIP_ARRIBA]}
               />
             </mesh>
           </group>
 
-          {/* Línea azul de unión — aparece cuando las piezas se acercan */}
+          {/* Línea de unión horizontal — aparece cuando las piezas se acercan */}
           {gap < 1.8 && (
             <mesh>
               <boxGeometry args={[
+                (bbox.max.x - bbox.min.x) * 1.1,
                 0.06,
-                (bbox.max.y - bbox.min.y) * 1.1,
                 (bbox.max.z - bbox.min.z) * 1.1,
               ]} />
               <meshStandardMaterial
@@ -311,7 +313,7 @@ export default function VisorCanvas({ modelo, progreso, mostrarCotas }) {
   const mostrarSTL = progreso >= FASE_CORTADO;
 
   return (
-    <Canvas camera={{ position: [4, 4, 8], fov: 44 }} shadows gl={{ antialias: true }}>
+    <Canvas camera={{ position: [5, 5, 10], fov: 44 }} shadows gl={{ antialias: true }}>
       <color attach="background" args={['#0f172a']} />
       <EnableClipping />
 
@@ -326,12 +328,12 @@ export default function VisorCanvas({ modelo, progreso, mostrarCotas }) {
       <directionalLight position={[-5, 4, -5]} intensity={0.3} color="#a0c4ff" />
       <pointLight position={[0, 8, 0]} intensity={0.4} color="#fff5e0" />
 
-      {/* Fases 0–65%: bloques procedurales */}
+      {/* Fases 0–49%: bloques procedurales apilados en Y */}
       {!mostrarSTL && (
         <BloquesEnBruto familia={modelo.familia} progreso={progreso} />
       )}
 
-      {/* Fases 66–100%: STL dividido → unido */}
+      {/* Fases 50–100%: STL separado en arriba/abajo → unido */}
       {mostrarSTL && (
         <Suspense fallback={<LoadingFallback />}>
           <STLPiezas
@@ -344,12 +346,12 @@ export default function VisorCanvas({ modelo, progreso, mostrarCotas }) {
       )}
 
       {/* Sombras y grilla */}
-      <ContactShadows position={[0, -3.2, 0]} opacity={0.45} scale={14} blur={2.5} far={5} />
+      <ContactShadows position={[0, -6.0, 0]} opacity={0.45} scale={18} blur={2.5} far={8} />
       <Grid
-        position={[0, -3.22, 0]} args={[16, 16]}
+        position={[0, -6.02, 0]} args={[20, 20]}
         cellSize={0.6} cellThickness={0.5} cellColor="#1e293b"
         sectionSize={2.4} sectionThickness={1} sectionColor="#334155"
-        fadeDistance={22} fadeStrength={1} followCamera={false}
+        fadeDistance={26} fadeStrength={1} followCamera={false}
       />
       <OrbitControls
         makeDefault enablePan enableZoom

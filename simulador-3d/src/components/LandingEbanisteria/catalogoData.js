@@ -140,8 +140,8 @@ export const MODELOS_MAP = Object.fromEntries(
 
 // Labels para las 4 fases de fabricación
 export const FASE_LABELS = [
-  { pct: 0,   label: 'Bloque en bruto',  desc: 'Maderos en bruto sin ningún corte ni marcado.' },
-  { pct: 33,  label: 'Trazado',          desc: 'Se marca en rojo la zona a retirar con la herramienta.' },
-  { pct: 66,  label: 'Pieza cortada',    desc: 'Material sobrante retirado; se aprecian los perfiles de la unión separada.' },
-  { pct: 100, label: 'Ensamblaje',       desc: 'Las dos piezas encajan perfectamente formando la unión.' },
+  { pct: 0,   label: 'Bloque en bruto',  desc: 'Maderos en bruto apilados, sin ningún corte ni marcado.' },
+  { pct: 25,  label: 'Trazado',          desc: 'Se marca en rojo la zona a retirar en cada bloque independientemente.' },
+  { pct: 50,  label: 'Pieza cortada',    desc: 'Material sobrante retirado; se aprecian los perfiles de cada pieza separada.' },
+  { pct: 80,  label: 'Ensamblaje',       desc: 'La pieza de arriba baja y encaja con la de abajo formando la unión.' },
 ];
