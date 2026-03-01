@@ -8,7 +8,8 @@ function removeModuleType() {
     name: 'remove-module-type',
     transformIndexHtml(html) {
       return html
-        .replace(/<script type="module"/g, '<script')
+        // Reemplaza type="module" por defer para que el script espere al DOM
+        .replace(/<script type="module"/g, '<script defer')
         .replace(/ crossorigin/g, '');
     },
   };
