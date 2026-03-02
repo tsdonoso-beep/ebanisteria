@@ -138,11 +138,8 @@ export const MODELOS_MAP = Object.fromEntries(
   CATEGORIAS.flatMap(cat => cat.items.map(item => [item.id, { ...item, categoria: cat.label }]))
 );
 
-// Labels para las 5 fases de fabricación
+// Labels para las 2 fases de la línea de tiempo
 export const FASE_LABELS = [
-  { pct: 0,   label: 'Bloque en bruto',  desc: 'Maderos en bruto apilados, sin ningún corte ni marcado.' },
-  { pct: 25,  label: 'Trazado',          desc: 'Se marca en rojo la zona a retirar en cada bloque independientemente.' },
-  { pct: 50,  label: 'Pieza cortada',    desc: 'Material sobrante retirado; se aprecian los perfiles de cada pieza separada.' },
-  { pct: 80,  label: 'Ensamblaje',       desc: 'La pieza de arriba baja y encaja con la de abajo formando la unión.' },
-  { pct: 100, label: 'Ensamblado',       desc: 'Las dos piezas forman una unión completa. Modelo final con detalle real.' },
+  { pct: 0,   label: 'Separado',   desc: 'Las dos piezas de la unión mostradas de forma separada, listas para ensamblar.' },
+  { pct: 100, label: 'Ensamblado', desc: 'Las dos piezas forman la unión completa.' },
 ];

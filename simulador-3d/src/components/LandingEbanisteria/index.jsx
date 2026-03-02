@@ -73,19 +73,19 @@ export default function LandingEbanisteria() {
 
   const handleCotas = useCallback(() => {
     setModoCotas(v => {
-      // Las cotas se muestran sobre el STL ensamblado (100%)
+      // Las cotas se muestran sobre el modelo ensamblado (100%)
       if (!v && progreso < 100) setProgreso(100);
       return !v;
     });
   }, [progreso]);
 
   // Botón "Ensamblar": anima el slider hasta 100%.
-  // Si ya está ensamblado, vuelve a la fase "Pieza cortada" (50%).
+  // Si ya está ensamblado, vuelve a la fase separada (0%).
   const handleEnsamblar = useCallback(() => {
     if (animRef.current) cancelAnimationFrame(animRef.current);
 
     if (progreso >= 100) {
-      setProgreso(50);
+      setProgreso(0);
       return;
     }
 
@@ -99,8 +99,8 @@ export default function LandingEbanisteria() {
     animRef.current = requestAnimationFrame(step);
   }, [progreso]);
 
-  const faseInfo      = getFaseInfo(progreso);
-  const enPiezaCortada = progreso >= 50;
+  const faseInfo       = getFaseInfo(progreso);
+  const enPiezaCortada = true;   // botón Ensamblar siempre visible
   const ensamblado     = progreso >= 100;
 
   return (
@@ -195,7 +195,7 @@ export default function LandingEbanisteria() {
                 <button
                   className={`le-tool-btn le-tool-btn--ensamblar ${ensamblado ? 'le-tool-btn--active' : ''}`}
                   onClick={handleEnsamblar}
-                  title={ensamblado ? 'Volver a ver las piezas separadas' : 'Animar el ensamblaje de las dos piezas'}
+                  title={ensamblado ? 'Separar las piezas' : 'Animar el ensamblaje de las dos piezas'}
                 >
                   {ensamblado ? <IconSeparar /> : <IconEnsamblar />}
                   {ensamblado ? 'Separar piezas' : 'Ensamblar piezas'}

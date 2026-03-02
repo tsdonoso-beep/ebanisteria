@@ -1,409 +1,244 @@
 /**
- * VisorCanvas.jsx
+ * VisorCanvas.jsx — Simulador 3D de Ensambles
  * ─────────────────────────────────────────────────────────────────────────
- * Simulador 3D de fabricación — 5 fases con geometría coherente
+ * Muestra las 2 piezas de cada unión directamente desde el STL.
+ * Línea de tiempo de 2 fases:
+ *   0%   → Piezas separadas (se ve claramente cada pieza)
+ *   100% → Piezas ensambladas (unión completa)
  *
- *  Fase 1 (0–24%)   Bloque en bruto      — dos maderos sólidos apilados
- *  Fase 2 (25–49%)  Trazado              — zona a retirar: relleno rojo 3D
- *                                           + contorno punteado en AMBAS piezas
- *  Fase 3 (50–79%)  Pieza cortada        — CSG real: bloque – zonas = perfil limpio
- *  Fase 4 (80–99%)  Ensamblaje           — pieza B baja hasta encajar con A
- *  Fase 5 (100%)    Ensamblado           — STL completo + glow + cotas
- *
- * Principio de diseño:
- *  • Pieza A (abajo) tiene la zona funcional en su CARA SUPERIOR (mirando hacia B).
- *  • Pieza B (arriba) tiene la zona funcional en su CARA INFERIOR (mirando hacia A).
- *  • Al cerrar el gap ambas caras encajan lógicamente según el tipo de unión.
- *  • El STL en fase 5 confirma el resultado real.
+ * Algoritmo:
+ *   1. Cargar STL (contiene las 2 piezas como una sola malla)
+ *   2. Detectar componentes conectados con Union-Find
+ *   3. Separar en 2 geometrías independientes
+ *   4. Animar desde posición separada → posición ensamblada
  * ─────────────────────────────────────────────────────────────────────────
  */
 
-import React, { useRef, useMemo, useEffect, Suspense } from 'react';
-import { Canvas } from '@react-three/fiber';
+import React, { useRef, useMemo, Suspense } from 'react';
+import { Canvas, useLoader, useFrame } from '@react-three/fiber';
 import { OrbitControls, ContactShadows, Grid, Html } from '@react-three/drei';
-import { useLoader, useFrame } from '@react-three/fiber';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import * as THREE from 'three';
-import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 
-// ── Límites de fase ─────────────────────────────────────────────────────
-const FASE_TRAZADO  = 25;
-const FASE_CORTADO  = 50;
-const FASE_ENSAMBLE = 80;
-
-// ── Colores ──────────────────────────────────────────────────────────────
+// ── Colores madera ─────────────────────────────────────────────────────────
 const COL_A = '#c8922a';   // madera clara (pieza inferior)
 const COL_B = '#8b5e1a';   // madera oscura (pieza superior)
 
-// ── Evaluador CSG (singleton) ────────────────────────────────────────────
-const CSG = new Evaluator();
+// Amplitud de separación en unidades de escena
+const SEP = 2.6;
 
 // ══════════════════════════════════════════════════════════════════════════
-// CONFIGURACIONES POR FAMILIA
-// Regla: eliminarA → cara SUPERIOR de A | eliminarB → cara INFERIOR de B
-// Así, al cerrar el gap, los perfiles encajan lógicamente.
+// SPLIT STL — Detectar componentes conectados con Union-Find
+// Agrupa los triángulos de la malla por adyacencia de vértices compartidos.
+// Devuelve las 2 geometrías más grandes como piezas independientes.
 // ══════════════════════════════════════════════════════════════════════════
 
-function getFamiliaConfig(familia) {
+function splitMeshByComponents(geometry) {
+  const pos   = geometry.attributes.position;
+  const nVert = pos.count; // 3 vértices × número de triángulos
 
-  switch (familia) {
+  // ── Paso 1: Unir vértices con la misma posición (tolerancia 0.001) ──
+  // Mapa "x,y,z" → índice canónico
+  const posMap = new Map();
+  const canon  = new Int32Array(nVert);
 
-    // ── Caja y Espiga (Mortise & Tenon) ──────────────────────────────────
-    // A: caja (mortaja) abierta hacia arriba
-    // B: espiga (tenón) que sobresale hacia abajo
-    case 'caja-espiga': {
-      const [BW, BH, BD] = [3.5, 5.0, 2.5];
-      const [TW, TH]     = [1.2, 2.0];            // ancho y profundidad del tenón
-      const SW = (BW - TW) / 2;                    // ancho de cada hombro
-      const MY = BH / 2 - TH / 2;                  // centro de la mortaja en local-A
-      return {
-        bloqueA: [BW, BH, BD],
-        bloqueB: [BW, BH, BD],
-        // Mortaja: slot en la cara superior de A (va hacia adentro del bloque)
-        eliminarA: [
-          { args: [TW, TH, BD], pos: [0, MY, 0] },
-        ],
-        // Espiga: quitar hombros en la cara inferior de B (deja el tenón)
-        eliminarB: [
-          { args: [SW, TH, BD], pos: [-(TW / 2 + SW / 2), -MY, 0] },
-          { args: [SW, TH, BD], pos: [+(TW / 2 + SW / 2), -MY, 0] },
-        ],
-      };
-    }
-
-    // ── Tarugo (Dowel) ───────────────────────────────────────────────────
-    // A y B: perforaciones cuadradas enfrentadas que reciben el tarugo
-    case 'tarugo': {
-      const [BW, BH, BD] = [3.5, 4.5, 2.5];
-      const [HW, HH]     = [0.65, 1.1];            // sección y profundidad del taladro
-      const HY = BH / 2 - HH / 2;
-      return {
-        bloqueA: [BW, BH, BD],
-        bloqueB: [BW, BH, BD],
-        eliminarA: [
-          { args: [HW, HH, HW], pos: [-0.85,  HY, 0] },
-          { args: [HW, HH, HW], pos: [+0.85,  HY, 0] },
-        ],
-        eliminarB: [
-          { args: [HW, HH, HW], pos: [-0.85, -HY, 0] },
-          { args: [HW, HH, HW], pos: [+0.85, -HY, 0] },
-        ],
-      };
-    }
-
-    // ── Horquilla / Bridle ───────────────────────────────────────────────
-    // A: horquilla (dos dientes, slot central abierto arriba)
-    // B: lengüeta que entra en la horquilla desde abajo
-    case 'horquilla': {
-      const [BW, BH, BD] = [3.5, 5.0, 2.5];
-      const [FW, FH]     = [1.1, 2.0];             // ancho ranura y profundidad
-      const WS = (BW - FW) / 2;
-      const FY = BH / 2 - FH / 2;
-      return {
-        bloqueA: [BW, BH, BD],
-        bloqueB: [BW, BH, BD],
-        // Ranura central en cara superior de A (deja dos dientes)
-        eliminarA: [
-          { args: [FW, FH, BD], pos: [0, FY, 0] },
-        ],
-        // Quitar flancos en cara inferior de B (deja la lengüeta)
-        eliminarB: [
-          { args: [WS, FH, BD], pos: [-(FW / 2 + WS / 2), -FY, 0] },
-          { args: [WS, FH, BD], pos: [+(FW / 2 + WS / 2), -FY, 0] },
-        ],
-      };
-    }
-
-    // ── Media Madera (Half-Lap) ──────────────────────────────────────────
-    // A: rebaje en cuadrante superior-derecho  →  L invertida
-    // B: rebaje en cuadrante inferior-izquierdo →  L normal
-    // Encajan deslizando B sobre A: las L se complementan perfectamente
-    case 'media-madera': {
-      const [BW, BH, BD] = [4.0, 4.0, 2.5];
-      const [RW, RH]     = [BW / 2, BH / 2];       // mitad de cada dimensión
-      return {
-        bloqueA: [BW, BH, BD],
-        bloqueB: [BW, BH, BD],
-        // Quitar cuadrante superior-derecho de A
-        eliminarA: [
-          { args: [RW, RH, BD], pos: [+BW / 4, +BH / 4, 0] },
-        ],
-        // Quitar cuadrante inferior-izquierdo de B
-        eliminarB: [
-          { args: [RW, RH, BD], pos: [-BW / 4, -BH / 4, 0] },
-        ],
-      };
-    }
-
-    // ── Cola de Milano (Dovetail) ────────────────────────────────────────
-    // Similar a caja-espiga pero con cola más ancha en la base
-    // (Aproximación rectangular — forma trapezoidal real en STL)
-    case 'cola-milano': {
-      const [BW, BH, BD] = [3.5, 5.0, 2.5];
-      const [TW, TH]     = [1.5, 2.0];             // cola más ancha que espiga normal
-      const SW = (BW - TW) / 2;
-      const CY = BH / 2 - TH / 2;
-      return {
-        bloqueA: [BW, BH, BD],
-        bloqueB: [BW, BH, BD],
-        // Caja (socket) de cola ancha en A
-        eliminarA: [
-          { args: [TW, TH, BD], pos: [0, CY, 0] },
-        ],
-        // Cola (tail) en B: hombros más pequeños dejan cola más ancha
-        eliminarB: [
-          { args: [SW, TH, BD], pos: [-(TW / 2 + SW / 2), -CY, 0] },
-          { args: [SW, TH, BD], pos: [+(TW / 2 + SW / 2), -CY, 0] },
-        ],
-      };
-    }
-
-    // ── Machihembrada (Tongue & Groove) ─────────────────────────────────
-    // A: ranura (hembra) en cara superior
-    // B: lengüeta (macho) que sobresale hacia abajo
-    case 'machihembrada':
-    default: {
-      const [BW, BH, BD] = [4.0, 3.5, 2.5];
-      const [GW, GH]     = [0.85, 0.85];           // ancho y profundidad de la ranura
-      const SW = (BW - GW) / 2;
-      const GY = BH / 2 - GH / 2;
-      return {
-        bloqueA: [BW, BH, BD],
-        bloqueB: [BW, BH, BD],
-        // Ranura estrecha en cara superior de A
-        eliminarA: [
-          { args: [GW, GH, BD], pos: [0, GY, 0] },
-        ],
-        // Quitar flancos en cara inferior de B (deja la lengüeta)
-        eliminarB: [
-          { args: [SW, GH, BD], pos: [-(GW / 2 + SW / 2), -GY, 0] },
-          { args: [SW, GH, BD], pos: [+(GW / 2 + SW / 2), -GY, 0] },
-        ],
-      };
+  for (let i = 0; i < nVert; i++) {
+    const kx = Math.round(pos.getX(i) * 1000);
+    const ky = Math.round(pos.getY(i) * 1000);
+    const kz = Math.round(pos.getZ(i) * 1000);
+    const key = `${kx},${ky},${kz}`;
+    if (posMap.has(key)) {
+      canon[i] = posMap.get(key);
+    } else {
+      posMap.set(key, i);
+      canon[i] = i;
     }
   }
-}
 
-// ══════════════════════════════════════════════════════════════════════════
-// CSG — resta las zonas al bloque y devuelve la geometría resultante
-// ══════════════════════════════════════════════════════════════════════════
+  // ── Paso 2: Union-Find sobre índices canónicos ──
+  const parent = Int32Array.from({ length: nVert }, (_, i) => i);
 
-function buildCortadaGeo(dims, eliminar) {
-  try {
-    let brush = new Brush(new THREE.BoxGeometry(...dims));
-    brush.updateMatrixWorld();
+  function find(a) {
+    while (parent[a] !== a) {
+      parent[a] = parent[parent[a]];
+      a = parent[a];
+    }
+    return a;
+  }
+  function union(a, b) {
+    const ra = find(a), rb = find(b);
+    if (ra !== rb) parent[ra] = rb;
+  }
 
-    for (const z of eliminar) {
-      const cut = new Brush(new THREE.BoxGeometry(...z.args));
-      cut.position.set(...z.pos);
-      cut.updateMatrixWorld();
-      brush = CSG.evaluate(brush, cut, SUBTRACTION);
-      brush.updateMatrixWorld();
+  const numTris = Math.floor(nVert / 3);
+  for (let t = 0; t < numTris; t++) {
+    const v0 = canon[t * 3];
+    const v1 = canon[t * 3 + 1];
+    const v2 = canon[t * 3 + 2];
+    union(v0, v1);
+    union(v1, v2);
+  }
+
+  // ── Paso 3: Agrupar triángulos por componente raíz ──
+  const groups = new Map();
+  for (let t = 0; t < numTris; t++) {
+    const root = find(canon[t * 3]);
+    if (!groups.has(root)) groups.set(root, []);
+    groups.get(root).push(t);
+  }
+
+  // Ordenar de mayor a menor
+  const sorted = [...groups.values()].sort((a, b) => b.length - a.length);
+
+  // ── Paso 4: Construir geometrías para las 2 piezas más grandes ──
+  const hasNormal = !!geometry.attributes.normal;
+  const geos = [];
+
+  for (let g = 0; g < Math.min(2, sorted.length); g++) {
+    const tris   = sorted[g];
+    const vCount = tris.length * 3;
+    const posArr = new Float32Array(vCount * 3);
+    const nrmArr = new Float32Array(vCount * 3);
+
+    for (let vi = 0; vi < vCount; vi++) {
+      const orig = tris[Math.floor(vi / 3)] * 3 + (vi % 3);
+      posArr[vi * 3]     = pos.getX(orig);
+      posArr[vi * 3 + 1] = pos.getY(orig);
+      posArr[vi * 3 + 2] = pos.getZ(orig);
+      if (hasNormal) {
+        const n = geometry.attributes.normal;
+        nrmArr[vi * 3]     = n.getX(orig);
+        nrmArr[vi * 3 + 1] = n.getY(orig);
+        nrmArr[vi * 3 + 2] = n.getZ(orig);
+      }
     }
 
-    const geo = brush.geometry.clone();
-    geo.computeVertexNormals();
-    return geo;
-  } catch {
-    // fallback: bloque completo
-    const geo = new THREE.BoxGeometry(...dims);
-    geo.computeVertexNormals();
-    return geo;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+    if (hasNormal) {
+      geo.setAttribute('normal', new THREE.BufferAttribute(nrmArr, 3));
+    } else {
+      geo.computeVertexNormals();
+    }
+    geo.computeBoundingBox();
+    geos.push(geo);
   }
+
+  return geos;
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// FASE 2 — Contorno punteado rojo + relleno 3D de la zona a retirar
+// STLPiezasUnion — Carga, divide y anima las 2 piezas del STL
 // ══════════════════════════════════════════════════════════════════════════
 
-function ZonaTrazado({ args, pos, opacity }) {
-  const lsRef = useRef();
-
-  const edgesGeo = useMemo(() => {
-    const box = new THREE.BoxGeometry(...args);
-    return new THREE.EdgesGeometry(box);
-  }, [args[0], args[1], args[2]]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // LineDashedMaterial requiere computar distancias en el objeto LineSegments
-  useEffect(() => {
-    if (lsRef.current) lsRef.current.computeLineDistances();
-  }, [edgesGeo]);
-
-  if (opacity < 0.005) return null;
-
-  return (
-    <group position={pos}>
-      {/* Relleno rojo semitransparente — sombreado 3D volumétrico */}
-      <mesh renderOrder={1}>
-        <boxGeometry args={args} />
-        <meshStandardMaterial
-          color="#ef4444"
-          transparent opacity={opacity * 0.52}
-          emissive="#dc2626" emissiveIntensity={0.85}
-          depthWrite={false}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-
-      {/* Contorno punteado rojo */}
-      <lineSegments ref={lsRef} geometry={edgesGeo} renderOrder={2}>
-        <lineDashedMaterial
-          color="#ff1111"
-          dashSize={0.13} gapSize={0.08}
-          transparent opacity={Math.min(1, opacity * 1.5)}
-        />
-      </lineSegments>
-    </group>
-  );
-}
-
-// ══════════════════════════════════════════════════════════════════════════
-// FASES 1 y 2 — Bloque sólido + zonas de trazado
-// ══════════════════════════════════════════════════════════════════════════
-
-function PiezaSolida({ dims, eliminar, color, opTrazado }) {
-  return (
-    <group>
-      <mesh castShadow receiveShadow>
-        <boxGeometry args={dims} />
-        <meshStandardMaterial color={color} roughness={0.85} metalness={0.02} />
-      </mesh>
-      {eliminar.map((z, i) => (
-        <ZonaTrazado key={i} args={z.args} pos={z.pos} opacity={opTrazado} />
-      ))}
-    </group>
-  );
-}
-
-// ══════════════════════════════════════════════════════════════════════════
-// FASES 3 y 4 — Pieza cortada con geometría CSG real
-// ══════════════════════════════════════════════════════════════════════════
-
-function PiezaCortada({ familia, pieza, color }) {
-  const geo = useMemo(() => {
-    const cfg      = getFamiliaConfig(familia);
-    const dims     = pieza === 'A' ? cfg.bloqueA    : cfg.bloqueB;
-    const eliminar = pieza === 'A' ? cfg.eliminarA  : cfg.eliminarB;
-    return buildCortadaGeo(dims, eliminar);
-  }, [familia, pieza]);
-
-  return (
-    <mesh castShadow receiveShadow geometry={geo}>
-      <meshStandardMaterial color={color} roughness={0.80} metalness={0.04} />
-    </mesh>
-  );
-}
-
-// ══════════════════════════════════════════════════════════════════════════
-// Orquestador de fases 0–99 %
-// ══════════════════════════════════════════════════════════════════════════
-
-function BloquesAnimados({ familia, progreso }) {
-  const cfg = getFamiliaConfig(familia);
-
-  // Transición suave del trazado
-  const tTrazado = progreso >= FASE_TRAZADO
-    ? Math.min(1, (progreso - FASE_TRAZADO) / 8) : 0;
-  // Transición suave del cortado
-  const tCortado = progreso >= FASE_CORTADO
-    ? Math.min(1, (progreso - FASE_CORTADO) / 5) : 0;
-  // Transición de unión
-  const tUnion = progreso >= FASE_ENSAMBLE
-    ? Math.min(1, (progreso - FASE_ENSAMBLE) / (100 - FASE_ENSAMBLE)) : 0;
-
-  // El trazado desaparece al entrar en fase cortada
-  const opTrazado = tCortado > 0 ? 0 : tTrazado;
-
-  // Gap en eje Y (1.0 → 0 durante el ensamblaje)
-  const gap = 1.0 * (1 - tUnion);
-  const yA  = -(gap / 2 + cfg.bloqueA[1] / 2);
-  const yB  = +(gap / 2 + cfg.bloqueB[1] / 2);
-
-  // Cambio limpio de fase: sólido → cortado
-  const enFaseSolida   = progreso < FASE_CORTADO;
-  const enFaseCortada  = progreso >= FASE_CORTADO;
-
-  return (
-    <group>
-      {/* ── Pieza A — abajo (recibe a B) ─────────────────────────────── */}
-      <group position={[0, yA, 0]}>
-        {enFaseSolida && (
-          <PiezaSolida
-            dims={cfg.bloqueA} eliminar={cfg.eliminarA}
-            color={COL_A} opTrazado={opTrazado}
-          />
-        )}
-        {enFaseCortada && (
-          <PiezaCortada familia={familia} pieza="A" color={COL_A} />
-        )}
-      </group>
-
-      {/* ── Pieza B — arriba (desciende durante el ensamblaje) ────────── */}
-      <group position={[0, yB, 0]}>
-        {enFaseSolida && (
-          <PiezaSolida
-            dims={cfg.bloqueB} eliminar={cfg.eliminarB}
-            color={COL_B} opTrazado={opTrazado}
-          />
-        )}
-        {enFaseCortada && (
-          <PiezaCortada familia={familia} pieza="B" color={COL_B} />
-        )}
-      </group>
-    </group>
-  );
-}
-
-// ══════════════════════════════════════════════════════════════════════════
-// FASE 5 (100%) — STL completo + glow + cotas opcionales
-// ══════════════════════════════════════════════════════════════════════════
-
-function STLEnsamblado({ url, mostrarCotas, tolerancias }) {
+function STLPiezasUnion({ url, progreso, mostrarCotas, tolerancias }) {
   const rawGeo = useLoader(STLLoader, url);
+  const matBRef = useRef();
 
-  const geometry = useMemo(() => {
+  const { geoA, geoB, sepVec } = useMemo(() => {
+    // ── Normalizar geometría completa ──────────────────────────────────
     const geo = rawGeo.clone();
     geo.computeBoundingBox();
     geo.center();
     const size = new THREE.Vector3();
     geo.boundingBox.getSize(size);
-    const esc = 5.2 / Math.max(size.x, size.y, size.z);
-    geo.scale(esc, esc, esc);
-    geo.computeBoundingBox();
+    const escala = 5.5 / Math.max(size.x, size.y, size.z);
+    geo.scale(escala, escala, escala);
     geo.computeVertexNormals();
-    return geo;
+
+    // ── Dividir en 2 piezas ─────────────────────────────────────────────
+    const partes = splitMeshByComponents(geo);
+
+    if (partes.length < 2) {
+      // Solo 1 componente — fallback: mostrar el STL completo
+      partes[0].computeBoundingBox();
+      return { geoA: partes[0], geoB: null, sepVec: new THREE.Vector3(0, 1, 0) };
+    }
+
+    const [p1, p2] = partes;
+
+    // Centros de cada pieza
+    const c1 = new THREE.Vector3();
+    const c2 = new THREE.Vector3();
+    p1.boundingBox.getCenter(c1);
+    p2.boundingBox.getCenter(c2);
+
+    // Pieza A = la que tiene centro Y más bajo (inferior)
+    const [geoA, geoB] = c1.y <= c2.y ? [p1, p2] : [p2, p1];
+
+    // Vector de separación apunta de A hacia B (normalizado)
+    const aCenter = c1.y <= c2.y ? c1 : c2;
+    const bCenter = c1.y <= c2.y ? c2 : c1;
+    const sepVec  = new THREE.Vector3().subVectors(bCenter, aCenter).normalize();
+
+    return { geoA, geoB, sepVec };
   }, [rawGeo]);
 
-  const bbox   = geometry.boundingBox;
-  const matRef = useRef();
+  // ── Interpolación lineal: 0% separado → 100% ensamblado ──────────────
+  const t = progreso / 100;
+  const posA = [
+    -sepVec.x * SEP * (1 - t),
+    -sepVec.y * SEP * (1 - t),
+    -sepVec.z * SEP * (1 - t),
+  ];
+  const posB = [
+    sepVec.x * SEP * (1 - t),
+    sepVec.y * SEP * (1 - t),
+    sepVec.z * SEP * (1 - t),
+  ];
 
+  // ── Brillo de completado al 100% ──────────────────────────────────────
   useFrame(({ clock }) => {
-    if (matRef.current)
-      matRef.current.emissiveIntensity = 0.22 + Math.sin(clock.getElapsedTime() * 2.5) * 0.13;
+    if (matBRef.current && progreso >= 100) {
+      matBRef.current.emissiveIntensity =
+        0.20 + Math.sin(clock.getElapsedTime() * 2.5) * 0.12;
+    }
   });
+
+  // Bounding box de geoA para posicionar cotas
+  const bboxA = geoA?.boundingBox;
 
   return (
     <group>
-      <mesh castShadow receiveShadow geometry={geometry}>
+      {/* Pieza A — inferior */}
+      <mesh castShadow receiveShadow geometry={geoA} position={posA}>
         <meshStandardMaterial
-          ref={matRef}
-          color="#c8922a" roughness={0.55} metalness={0.10}
-          emissive="#c8922a" emissiveIntensity={0.30}
+          color={COL_A}
+          roughness={0.68}
+          metalness={0.06}
+          emissive={COL_A}
+          emissiveIntensity={progreso >= 100 ? 0.18 : 0}
         />
       </mesh>
 
-      {mostrarCotas && tolerancias?.map((tol, i) => {
+      {/* Pieza B — superior */}
+      {geoB && (
+        <mesh castShadow receiveShadow geometry={geoB} position={posB}>
+          <meshStandardMaterial
+            ref={matBRef}
+            color={COL_B}
+            roughness={0.68}
+            metalness={0.06}
+            emissive={COL_B}
+            emissiveIntensity={progreso >= 100 ? 0.20 : 0}
+          />
+        </mesh>
+      )}
+
+      {/* Cotas técnicas — solo cuando está ensamblado */}
+      {mostrarCotas && progreso >= 100 && bboxA && tolerancias?.map((tol, i) => {
         const angle = (i / tolerancias.length) * Math.PI - Math.PI / 4;
-        const r     = (bbox.max.x - bbox.min.x) * 0.7 + 1.5;
+        const r     = (bboxA.max.x - bboxA.min.x) * 0.7 + 1.8;
         return (
           <Html
             key={i}
             position={[
               Math.cos(angle) * r,
-              bbox.max.y * 0.4 - i * 1.4,
+              bboxA.max.y * 0.3 - i * 1.5,
               Math.sin(angle) * r,
             ]}
-            distanceFactor={8} center
+            distanceFactor={8}
+            center
           >
             <div className="le-cota-card">
               <div className="le-cota-parte">{tol.parte}</div>
@@ -420,6 +255,7 @@ function STLEnsamblado({ url, mostrarCotas, tolerancias }) {
   );
 }
 
+// ── Indicador de carga ────────────────────────────────────────────────────
 function LoadingFallback() {
   const ref = useRef();
   useFrame(({ clock }) => {
@@ -440,8 +276,6 @@ function LoadingFallback() {
 export default function VisorCanvas({ modelo, progreso, mostrarCotas }) {
   if (!modelo) return null;
 
-  const ensamblado = progreso >= 100;
-
   return (
     <Canvas
       camera={{ position: [4, 1, 14], fov: 50 }}
@@ -452,41 +286,55 @@ export default function VisorCanvas({ modelo, progreso, mostrarCotas }) {
 
       <ambientLight intensity={0.40} />
       <directionalLight
-        position={[6, 10, 6]} intensity={1.5} castShadow
+        position={[6, 10, 6]}
+        intensity={1.5}
+        castShadow
         shadow-mapSize={[2048, 2048]}
-        shadow-camera-left={-8} shadow-camera-right={8}
-        shadow-camera-top={8}  shadow-camera-bottom={-8}
+        shadow-camera-left={-8}
+        shadow-camera-right={8}
+        shadow-camera-top={8}
+        shadow-camera-bottom={-8}
       />
       <directionalLight position={[-5, 4, -5]} intensity={0.30} color="#a0c4ff" />
       <pointLight position={[0, 8, 0]} intensity={0.40} color="#fff5e0" />
 
-      {/* Fases 1–4: geometría procedural, sin duplicidad posible */}
-      {!ensamblado && (
-        <BloquesAnimados familia={modelo.familia} progreso={progreso} />
-      )}
+      <Suspense fallback={<LoadingFallback />}>
+        <STLPiezasUnion
+          url={modelo.stl}
+          progreso={progreso}
+          mostrarCotas={mostrarCotas}
+          tolerancias={modelo.tolerancias}
+        />
+      </Suspense>
 
-      {/* Fase 5: STL completo sin clipping */}
-      {ensamblado && (
-        <Suspense fallback={<LoadingFallback />}>
-          <STLEnsamblado
-            url={modelo.stl}
-            mostrarCotas={mostrarCotas}
-            tolerancias={modelo.tolerancias}
-          />
-        </Suspense>
-      )}
-
-      <ContactShadows position={[0, -6.8, 0]} opacity={0.45} scale={20} blur={2.5} far={9} />
+      <ContactShadows
+        position={[0, -6.8, 0]}
+        opacity={0.45}
+        scale={20}
+        blur={2.5}
+        far={9}
+      />
       <Grid
-        position={[0, -6.82, 0]} args={[22, 22]}
-        cellSize={0.6} cellThickness={0.5} cellColor="#1e293b"
-        sectionSize={2.4} sectionThickness={1} sectionColor="#334155"
-        fadeDistance={28} fadeStrength={1} followCamera={false}
+        position={[0, -6.82, 0]}
+        args={[22, 22]}
+        cellSize={0.6}
+        cellThickness={0.5}
+        cellColor="#1e293b"
+        sectionSize={2.4}
+        sectionThickness={1}
+        sectionColor="#334155"
+        fadeDistance={28}
+        fadeStrength={1}
+        followCamera={false}
       />
       <OrbitControls
-        makeDefault enablePan enableZoom
-        minDistance={5} maxDistance={28}
-        minPolarAngle={0.15} maxPolarAngle={Math.PI / 1.85}
+        makeDefault
+        enablePan
+        enableZoom
+        minDistance={5}
+        maxDistance={28}
+        minPolarAngle={0.15}
+        maxPolarAngle={Math.PI / 1.85}
       />
     </Canvas>
   );
