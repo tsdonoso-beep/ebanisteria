@@ -1,0 +1,708 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   SimuladorDiagnostico3D — Estilos del componente
+   Paleta base: oscura (visor) + rojo institucional MINEDU (#B71C1C)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Reset / Scope ─────────────────────────────────────────────────────────
+   Todos los estilos están bajo .ssd-root para evitar colisiones con la
+   plataforma huésped.
+*/
+
+.ssd-root {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 560px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  color: #1f2937;
+  background: #111827;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   VIEWPORT 3D
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ssd-viewport {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  background: #111827;
+  overflow: hidden;
+}
+
+.ssd-viewport canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ── Badge tipo de unión ────────────────────────────────────────────────────  */
+.ssd-joint-badge {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(17, 24, 39, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f9fafb;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 20px;
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+  letter-spacing: 0.3px;
+}
+
+.ssd-badge-icon {
+  font-size: 14px;
+}
+
+/* ── Indicador de modo ──────────────────────────────────────────────────────  */
+.ssd-mode-indicator {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 14px;
+  border-radius: 20px;
+  pointer-events: none;
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.ssd-mode-inspection {
+  background: rgba(59, 130, 246, 0.25);
+  color: #93c5fd;
+}
+
+.ssd-mode-diagnosis {
+  background: rgba(234, 179, 8, 0.25);
+  color: #fde047;
+}
+
+.ssd-mode-complete {
+  background: rgba(34, 197, 94, 0.25);
+  color: #86efac;
+}
+
+/* ── Panel de Desarmado Virtual ─────────────────────────────────────────────  */
+.ssd-disassembly-panel {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(17, 24, 39, 0.90);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+  padding: 14px 20px 10px;
+  min-width: 280px;
+  max-width: 360px;
+  width: calc(100% - 40px);
+}
+
+.ssd-disassembly-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.ssd-disassembly-icon {
+  font-size: 15px;
+}
+
+.ssd-disassembly-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #d1d5db;
+  flex: 1;
+}
+
+.ssd-inspected-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.18);
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+/* ── Slider de desarmado ────────────────────────────────────────────────────  */
+.ssd-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, #B71C1C, #ef4444);
+  outline: none;
+  cursor: pointer;
+}
+
+.ssd-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  border: 2px solid #ef4444;
+  transition: transform 0.1s;
+}
+
+.ssd-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.ssd-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  cursor: pointer;
+  border: 2px solid #ef4444;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+.ssd-slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #6b7280;
+  margin-top: 5px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANEL LATERAL DE DIAGNÓSTICO
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ssd-panel {
+  width: 340px;
+  min-width: 300px;
+  flex-shrink: 0;
+  background: #f9fafb;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+}
+
+.ssd-panel::-webkit-scrollbar { width: 4px; }
+.ssd-panel::-webkit-scrollbar-track { background: transparent; }
+.ssd-panel::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
+
+/* ── Header del panel ───────────────────────────────────────────────────────  */
+.ssd-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #B71C1C;
+  color: white;
+  padding: 16px 20px;
+}
+
+.ssd-panel-logo {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.ssd-panel-title {
+  font-size: 15px;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+
+.ssd-panel-subtitle {
+  font-size: 11px;
+  opacity: 0.8;
+  margin: 2px 0 0;
+}
+
+/* ── Step indicator ─────────────────────────────────────────────────────────  */
+.ssd-steps {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px 12px;
+  gap: 0;
+}
+
+.ssd-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.ssd-step-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  transition: all 0.2s;
+}
+
+.ssd-step--done .ssd-step-dot {
+  background: #B71C1C;
+  color: white;
+}
+
+.ssd-step--active .ssd-step-dot {
+  background: #B71C1C;
+  color: white;
+  box-shadow: 0 0 0 3px rgba(183, 28, 28, 0.2);
+}
+
+.ssd-step--pending .ssd-step-dot {
+  background: #e5e7eb;
+  color: #9ca3af;
+}
+
+.ssd-step-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.ssd-step--active .ssd-step-label,
+.ssd-step--done .ssd-step-label {
+  color: #B71C1C;
+}
+
+.ssd-step-line {
+  flex: 1;
+  height: 2px;
+  background: #e5e7eb;
+  margin: 0 4px;
+  margin-bottom: 16px; /* compensar el label */
+}
+
+/* ── Divider ────────────────────────────────────────────────────────────────  */
+.ssd-panel-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 0 20px;
+}
+
+/* ── Contenido de fases ─────────────────────────────────────────────────────  */
+.ssd-phase-content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+}
+
+.ssd-phase-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #111827;
+  margin: 0;
+}
+
+.ssd-phase-desc {
+  font-size: 13px;
+  color: #4b5563;
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* ── Checklist de inspección ────────────────────────────────────────────────  */
+.ssd-checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ssd-checklist-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: #374151;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s;
+}
+
+.ssd-checklist-item--done {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.ssd-check-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #166534;
+}
+
+.ssd-check-empty {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #d1d5db;
+  border-radius: 3px;
+}
+
+.ssd-hint-badge {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: #d97706;
+  background: #fef3c7;
+  padding: 2px 6px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+/* ── Alertas ────────────────────────────────────────────────────────────────  */
+.ssd-alert {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.ssd-alert--warning {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #9a3412;
+}
+
+/* ── Opciones de diagnóstico ────────────────────────────────────────────────  */
+.ssd-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ssd-option-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ssd-option-card:hover {
+  border-color: #fca5a5;
+  background: #fff5f5;
+}
+
+.ssd-option-card--selected {
+  border-color: #B71C1C;
+  background: #fff1f2;
+  box-shadow: 0 0 0 3px rgba(183, 28, 28, 0.1);
+}
+
+.ssd-option-radio {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #d1d5db;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+  transition: border-color 0.15s;
+}
+
+.ssd-option-card--selected .ssd-option-radio {
+  border-color: #B71C1C;
+}
+
+.ssd-option-radio-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #B71C1C;
+}
+
+.ssd-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ssd-option-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.ssd-option-desc {
+  font-size: 11px;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+/* ── Botones ────────────────────────────────────────────────────────────────  */
+.ssd-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  letter-spacing: 0.2px;
+}
+
+.ssd-btn--primary {
+  background: #B71C1C;
+  color: white;
+}
+
+.ssd-btn--primary:hover:not(.ssd-btn--disabled) {
+  background: #991b1b;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(183, 28, 28, 0.35);
+}
+
+.ssd-btn--secondary {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+}
+
+.ssd-btn--secondary:hover {
+  background: #e5e7eb;
+}
+
+.ssd-btn--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Resultado / KPIs ───────────────────────────────────────────────────────  */
+.ssd-result-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 10px;
+}
+
+.ssd-result-banner--ok {
+  background: #f0fdf4;
+  border: 2px solid #86efac;
+}
+
+.ssd-result-banner--fail {
+  background: #fff1f2;
+  border: 2px solid #fecdd3;
+}
+
+.ssd-result-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ssd-result-banner--ok .ssd-result-icon {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.ssd-result-banner--fail .ssd-result-icon {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.ssd-result-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.ssd-result-subtitle {
+  font-size: 12px;
+  color: #4b5563;
+  margin-top: 2px;
+}
+
+.ssd-kpi-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #374151;
+  margin: 0;
+  padding-bottom: 4px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.ssd-kpi-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.ssd-kpi-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.ssd-kpi-card--wide {
+  grid-column: 1 / -1;
+}
+
+.ssd-kpi-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.ssd-kpi-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ssd-kpi-name {
+  font-size: 10px;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ssd-kpi-value {
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ssd-kpi-value--ok     { color: #16a34a; }
+.ssd-kpi-value--fail   { color: #dc2626; }
+.ssd-kpi-value--neutral { color: #1d4ed8; }
+
+/* ── Retroalimentación pedagógica ───────────────────────────────────────────  */
+.ssd-feedback {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 12px;
+  color: #0c4a6e;
+  line-height: 1.55;
+}
+
+.ssd-feedback p {
+  margin: 0 0 8px;
+}
+
+.ssd-feedback p:last-child {
+  margin-bottom: 0;
+}
+
+.ssd-feedback--warning {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #bae6fd;
+  color: #9a3412;
+}
+
+/* ── Footer del panel ───────────────────────────────────────────────────────  */
+.ssd-panel-footer {
+  margin-top: auto;
+  padding: 10px 20px;
+  font-size: 10px;
+  color: #9ca3af;
+  text-align: center;
+  border-top: 1px solid #e5e7eb;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 720px) {
+  .ssd-root {
+    flex-direction: column;
+    min-height: 100vh;
+    border-radius: 0;
+  }
+
+  .ssd-viewport {
+    height: 55vh;
+    min-height: 300px;
+    flex: none;
+  }
+
+  .ssd-panel {
+    width: 100%;
+    min-width: unset;
+    flex: 1;
+    height: auto;
+    max-height: 45vh;
+  }
+
+  .ssd-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ssd-kpi-card--wide {
+    grid-column: 1;
+  }
+
+  .ssd-mode-indicator {
+    font-size: 10px;
+    max-width: 60%;
+    text-align: center;
+  }
+}
