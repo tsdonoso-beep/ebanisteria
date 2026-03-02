@@ -158,10 +158,11 @@ function splitMeshGeometrically(geometry, axis) {
 
 function PiezasManual({ url, mostrarCotas, tolerancias, ensamble = {}, triggerReset }) {
   const {
-    axis      = 'y',
-    allComps  = false,
-    auxInBase = false,   // tarugos quedan en la base estática
-    geoSplit  = false,   // usar corte geométrico si Union-Find no separa
+    axis          = 'y',
+    allComps      = false,
+    auxInBase     = false,   // tarugos quedan en la base estática
+    geoSplit      = false,   // usar corte geométrico si Union-Find no separa
+    holePositions = null,    // [{x,z}] posiciones de orificios en coordenadas STL originales
   } = ensamble;
 
   const rawGeo    = useLoader(STLLoader, url);
@@ -177,10 +178,21 @@ function PiezasManual({ url, mostrarCotas, tolerancias, ensamble = {}, triggerRe
   const { geoA, auxBase, upperGroup, startPos } = useMemo(() => {
     const geo = rawGeo.clone();
     geo.computeBoundingBox();
+
+    // Guardar centro y escala ANTES de transformar, para convertir coords STL → escena
+    const origCenter = new THREE.Vector3();
+    geo.boundingBox.getCenter(origCenter);
+    const origSize = new THREE.Vector3();
+    geo.boundingBox.getSize(origSize);
+    const escala = 5.5 / Math.max(origSize.x, origSize.y, origSize.z);
+
+    // Convierte coordenada (x, z) en espacio STL original a espacio escena
+    const toSceneXZ = (ox, oz) => ({
+      x: (ox - origCenter.x) * escala,
+      z: (oz - origCenter.z) * escala,
+    });
+
     geo.center();
-    const sz = new THREE.Vector3();
-    geo.boundingBox.getSize(sz);
-    const escala = 5.5 / Math.max(sz.x, sz.y, sz.z);
     geo.scale(escala, escala, escala);
     geo.computeVertexNormals();
 
@@ -233,20 +245,48 @@ function PiezasManual({ url, mostrarCotas, tolerancias, ensamble = {}, triggerRe
       startPos = new THREE.Vector3(0, geoA.boundingBox.max.y + SEP, 0);
     }
 
-    // 7. Tarugos en base: reubicar a mitad de inserción en la cara superior de geoA
-    //    → la mitad del tarugo queda "dentro" de geoA y la mitad sobresale
+    // 7. Tarugos en base: colocarlos en los orificios de geoA
+    //    - Si hay holePositions: mover cada tarugo al orificio correspondiente
+    //      (ordenados por X para emparejarlos en orden izquierda→derecha)
+    //    - Siempre centrar en Y para quedar mitad insertados (mitad fuera sobresale)
     if (auxInBase) {
       const targetCy = geoA.boundingBox.max.y;
-      auxGeos.forEach(g => {
-        const cy = (g.boundingBox.min.y + g.boundingBox.max.y) / 2;
-        g.translate(0, targetCy - cy, 0);
-        g.computeBoundingBox();
-      });
+
+      if (holePositions && holePositions.length >= auxGeos.length) {
+        // Convertir posiciones de orificios a espacio escena
+        const sceneHoles = holePositions
+          .map(h => toSceneXZ(h.x, h.z))
+          .sort((a, b) => a.x - b.x);
+
+        // Ordenar tarugos por X también
+        const sorted = [...auxGeos].sort((a, b) => {
+          const acx = (a.boundingBox.min.x + a.boundingBox.max.x) / 2;
+          const bcx = (b.boundingBox.min.x + b.boundingBox.max.x) / 2;
+          return acx - bcx;
+        });
+
+        sorted.forEach((g, i) => {
+          const hole = sceneHoles[i];
+          const cx = (g.boundingBox.min.x + g.boundingBox.max.x) / 2;
+          const cy = (g.boundingBox.min.y + g.boundingBox.max.y) / 2;
+          const cz = (g.boundingBox.min.z + g.boundingBox.max.z) / 2;
+          g.translate(hole.x - cx, targetCy - cy, hole.z - cz);
+          g.computeBoundingBox();
+        });
+      } else {
+        // Fallback: solo corregir Y (sin holePositions)
+        auxGeos.forEach(g => {
+          const cy = (g.boundingBox.min.y + g.boundingBox.max.y) / 2;
+          g.translate(0, targetCy - cy, 0);
+          g.computeBoundingBox();
+        });
+      }
+
       return { geoA, auxBase: auxGeos, upperGroup: [geoB], startPos };
     }
 
     return { geoA, auxBase: [], upperGroup: [geoB, ...auxGeos], startPos };
-  }, [rawGeo, axis, allComps, auxInBase, geoSplit]);
+  }, [rawGeo, axis, allComps, auxInBase, geoSplit, holePositions]);
 
   // ── Llevar pieza B a la posición inicial ──────────────────────────────
   const applyStart = () => {

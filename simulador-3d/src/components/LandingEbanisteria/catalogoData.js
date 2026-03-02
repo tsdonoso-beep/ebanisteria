@@ -16,7 +16,12 @@ export const CATEGORIAS = [
         stl: './models/01-tarugo.stl',
         // Las 2 tablas se acercan en Y; los tarugos quedan estáticos en la base
         // (mitad insertados), la tabla superior desciende para recibirlos.
-        ensamble: { axis: 'y', allComps: true, auxInBase: true },
+        // holePositions: coordenadas (X,Z) de cada orificio en el STL original.
+        // El código las convierte a espacio-escena para centrar cada tarugo en su agujero.
+        ensamble: {
+          axis: 'y', allComps: true, auxInBase: true,
+          holePositions: [{ x: 1011.6, z: 10.0 }, { x: 1052.3, z: 10.0 }],
+        },
         tolerancias: [
           { parte: 'Tarugo Ø (macho)',      nominal: '10.0 mm', real: '9.8 mm',  nota: 'Huelgo -0.2 mm: expansión radial al absorber cola vinílica.' },
           { parte: 'Perforación Ø (hembra)', nominal: '10.0 mm', real: '10.0 mm', nota: 'Profundidad = ½ longitud del tarugo + 2 mm de holgura axial.' },
@@ -87,7 +92,10 @@ export const CATEGORIAS = [
         stl: './models/06-junta-tarugo.stl',
         // Junta con tarugos: tarugos estáticos en la base (mitad insertados),
         // la segunda tabla desciende para recibirlos.
-        ensamble: { axis: 'y', allComps: true, auxInBase: true },
+        ensamble: {
+          axis: 'y', allComps: true, auxInBase: true,
+          holePositions: [{ x: 1120.0, z: 10.0 }, { x: 1160.0, z: 10.0 }, { x: 1200.0, z: 10.0 }],
+        },
         tolerancias: [
           { parte: 'Tarugo Ø',               nominal: '8.0 mm',  real: '7.8 mm',  nota: 'Huelgo -0.2 mm estándar. Espaciado máx. 150 mm entre tarugos.' },
           { parte: 'Perforación profundidad', nominal: '20.0 mm', real: '20.0 mm', nota: 'Igual en ambas piezas; centrado en el espesor.' },
