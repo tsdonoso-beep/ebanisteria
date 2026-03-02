@@ -1,54 +1,48 @@
 /**
- * VisorCanvas.jsx — Simulador 3D de Ensambles de Ebanistería
+ * VisorCanvas.jsx — Simulador 3D con control manual por teclado
  * ─────────────────────────────────────────────────────────────────────────
- * Lógica de ensamble por tipo de junta (configurada en catalogoData.js):
+ * La pieza B se mueve libremente con WASD e IK.
+ * La pieza A permanece estática.
  *
- *  axis: 'y'  — Pieza B desciende en Y e ingresa en pieza A
- *               (caja-espiga, horquilla, cola-de-milano, machihembrada,
- *                empalmes a horquilla)
+ *  Movimiento pieza B:
+ *    W → +Y (arriba)      S → -Y (abajo)
+ *    A → -X (izquierda)   D → +X (derecha)
  *
- *  axis: 'x'  — Pieza B desliza en X hacia la posición final (sin penetrar
- *               desde arriba). Corrección Y automática para alinear la cara
- *               superior de ambas piezas antes de la animación.
- *               (media-madera ensambles N4, N8, N9)
+ *  Rotación pieza B (continua mientras se mantiene la tecla):
+ *    I → gira en eje X    K → gira en eje Y
  *
- *  allComps: true — Se muestran TODOS los componentes del STL (p.ej. tarugos).
- *               Los componentes auxiliares (tarugos/clavijas) se agrupan con
- *               la pieza superior y se animan juntos.
- *               (tarugo N1, junta-tarugo N6)
+ *  Cámara: ratón / trackpad (OrbitControls)
  *
- *  penetration — Fracción de min(hA,hB) que B penetra en A al 100%.
- *               0 = solo se tocan; 0.5 = mitad dentro; 0.8 = casi completo.
+ *  El movimiento es fluido gracias a delta-time en useFrame.
  * ─────────────────────────────────────────────────────────────────────────
  */
 
-import React, { useRef, useMemo, Suspense } from 'react';
+import React, { useRef, useMemo, useEffect, Suspense } from 'react';
 import { Canvas, useLoader, useFrame } from '@react-three/fiber';
 import { OrbitControls, ContactShadows, Grid, Html } from '@react-three/drei';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import * as THREE from 'three';
 
-// ── Paleta de colores madera ──────────────────────────────────────────────
-const COL_A     = '#c8922a';   // tabla inferior / receptora (madera clara)
-const COL_B     = '#7b4f1a';   // tabla superior / insertada  (madera oscura)
-const COL_AUX   = '#b07840';   // tarugos / clavijas (tono intermedio)
+// ── Colores ────────────────────────────────────────────────────────────────
+const COL_A   = '#c8922a';   // pieza A — madera clara (fija)
+const COL_B   = '#7b4f1a';   // pieza B — madera oscura (movible)
+const COL_AUX = '#b07840';   // tarugos / clavijas
 
-// ── Separación extra al 0% (unidades de escena) ───────────────────────────
-const SEP = 2.5;
+// ── Velocidades ─────────────────────────────────────────────────────────────
+const MOVE_SPEED = 3.0;    // unidades / segundo
+const ROT_SPEED  = 1.8;    // radianes / segundo
+
+// ── Separación inicial de la pieza B respecto a A ──────────────────────────
+const SEP = 2.8;
 
 // ══════════════════════════════════════════════════════════════════════════
-// splitMeshByComponents
-// Detecta componentes conectados (Union-Find) y devuelve TODAS las
-// geometrías ordenadas por VOLUMEN de bounding-box (desc).
-// → Las 2 piezas principales siempre quedan primero; los tarugos/clavijas
-//   (volumen mucho menor) quedan al final.
+// Union-Find para detectar componentes conectados
 // ══════════════════════════════════════════════════════════════════════════
 
 function splitMeshByComponents(geometry) {
   const pos   = geometry.attributes.position;
   const nVert = pos.count;
 
-  // Paso 1: mapa posición → índice canónico
   const posMap = new Map();
   const canon  = new Int32Array(nVert);
   for (let i = 0; i < nVert; i++) {
@@ -57,7 +51,6 @@ function splitMeshByComponents(geometry) {
     else { posMap.set(key, i); canon[i] = i; }
   }
 
-  // Paso 2: Union-Find
   const parent = Int32Array.from({ length: nVert }, (_, i) => i);
   function find(a) {
     while (parent[a] !== a) { parent[a] = parent[parent[a]]; a = parent[a]; }
@@ -67,10 +60,10 @@ function splitMeshByComponents(geometry) {
   for (let t = 0; t < numTris; t++) {
     const ra = find(canon[t*3]), rb = find(canon[t*3+1]), rc = find(canon[t*3+2]);
     if (ra !== rb) parent[ra] = rb;
-    if (find(rb) !== rc) parent[find(rb)] = rc;
+    const rbc = find(canon[t*3+1]);
+    if (rbc !== rc) parent[rbc] = rc;
   }
 
-  // Paso 3: agrupar triángulos por raíz
   const groups = new Map();
   for (let t = 0; t < numTris; t++) {
     const root = find(canon[t*3]);
@@ -78,8 +71,7 @@ function splitMeshByComponents(geometry) {
     groups.get(root).push(t);
   }
 
-  // Paso 4: construir geometrías
-  const hasN = !!geometry.attributes.normal;
+  const hasN   = !!geometry.attributes.normal;
   const allGeos = [];
   for (const tris of groups.values()) {
     const vCount = tris.length * 3;
@@ -87,7 +79,7 @@ function splitMeshByComponents(geometry) {
     const nArr   = new Float32Array(vCount * 3);
     for (let vi = 0; vi < vCount; vi++) {
       const orig = tris[Math.floor(vi/3)]*3 + (vi%3);
-      pArr[vi*3]   = pos.getX(orig); pArr[vi*3+1] = pos.getY(orig); pArr[vi*3+2] = pos.getZ(orig);
+      pArr[vi*3] = pos.getX(orig); pArr[vi*3+1] = pos.getY(orig); pArr[vi*3+2] = pos.getZ(orig);
       if (hasN) {
         const n = geometry.attributes.normal;
         nArr[vi*3] = n.getX(orig); nArr[vi*3+1] = n.getY(orig); nArr[vi*3+2] = n.getZ(orig);
@@ -101,7 +93,7 @@ function splitMeshByComponents(geometry) {
     allGeos.push(geo);
   }
 
-  // Paso 5: ordenar por VOLUMEN de bbox (desc) — las piezas principales quedan primero
+  // Ordenar por volumen de bounding-box (piezas grandes primero, tarugos al final)
   const sv = new THREE.Vector3();
   allGeos.sort((a, b) => {
     a.boundingBox.getSize(sv); const va = sv.x*sv.y*sv.z;
@@ -112,18 +104,24 @@ function splitMeshByComponents(geometry) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// STLPiezasUnion
+// PiezasManual — pieza A fija + pieza B controlada con teclado
 // ══════════════════════════════════════════════════════════════════════════
 
-function STLPiezasUnion({ url, progreso, mostrarCotas, tolerancias, ensamble = {} }) {
-  const { axis = 'y', penetration = 0.5, allComps = false } = ensamble;
+function PiezasManual({ url, mostrarCotas, tolerancias, ensamble = {}, triggerReset }) {
+  const { axis = 'y', allComps = false } = ensamble;
 
-  const rawGeo  = useLoader(STLLoader, url);
-  const matBRef = useRef();
+  const rawGeo   = useLoader(STLLoader, url);
+  const groupBRef = useRef();
 
-  // ── Preprocesar geometría y calcular offset de ensamble ──────────────
-  const state = useMemo(() => {
-    // Normalizar: centrar y escalar a ~5.5 unidades
+  // Posición y rotación actuales de la pieza B (refs para no causar re-renders)
+  const posB = useRef(new THREE.Vector3());
+  const rotB = useRef(new THREE.Euler());
+
+  // Estado de teclas presionadas
+  const keys = useRef({});
+
+  // ── Geometrías y posición inicial ─────────────────────────────────────
+  const { geoA, upperGroup, startPos } = useMemo(() => {
     const geo = rawGeo.clone();
     geo.computeBoundingBox();
     geo.center();
@@ -134,75 +132,89 @@ function STLPiezasUnion({ url, progreso, mostrarCotas, tolerancias, ensamble = {
     geo.computeVertexNormals();
 
     const partes = splitMeshByComponents(geo);
-
-    // ── Caso de 1 solo componente (N11: ya ensamblado) ────────────────
     if (partes.length < 2) {
-      return { geoA: partes[0], upperGroup: [], assembled: { x: 0, y: 0 } };
+      return { geoA: partes[0], upperGroup: [], startPos: new THREE.Vector3(0, SEP, 0) };
     }
 
-    // ── Las 2 piezas principales son siempre las de mayor volumen ─────
-    // (el orden por volumen desc las pone primero)
     const p1 = partes[0], p2 = partes[1];
     const cy1 = (p1.boundingBox.min.y + p1.boundingBox.max.y) / 2;
     const cy2 = (p2.boundingBox.min.y + p2.boundingBox.max.y) / 2;
-
-    // geoA = pieza con centro Y más bajo (receptora / inferior)
     const [geoA, geoB] = cy1 <= cy2 ? [p1, p2] : [p2, p1];
 
-    // ── Componentes auxiliares (tarugos/clavijas) ─────────────────────
-    // Se animan junto con geoB (grupo superior)
+    // Tarugos / auxiliares
     const midY   = (geoA.boundingBox.max.y + geoB.boundingBox.min.y) / 2;
     const auxGeos = allComps
-      ? partes.slice(2).filter(g => {
-          const cy = (g.boundingBox.min.y + g.boundingBox.max.y) / 2;
-          return cy > midY;
-        })
+      ? partes.slice(2).filter(g => (g.boundingBox.min.y + g.boundingBox.max.y) / 2 > midY)
       : [];
 
-    // ── Calcular posición de ensamble ─────────────────────────────────
-    const gapY   = geoB.boundingBox.min.y - geoA.boundingBox.max.y;
-    const hA     = geoA.boundingBox.max.y - geoA.boundingBox.min.y;
-    const hB     = geoB.boundingBox.max.y - geoB.boundingBox.min.y;
-    const penDist = Math.min(hA, hB) * penetration;
-
-    let assembled;
+    // Posición inicial separada
+    let startPos;
     if (axis === 'x') {
-      // Alinear TOPS: la cara superior de B coincide con la cara superior de A.
-      // No hay penetración en Y; B deslizará lateralmente.
-      assembled = {
-        x: 0,
-        y: -(geoB.boundingBox.max.y - geoA.boundingBox.max.y),
-      };
+      // Corrección Y para alinear los tops; pieza B comienza a la derecha
+      const alignedY = -(geoB.boundingBox.max.y - geoA.boundingBox.max.y);
+      startPos = new THREE.Vector3(SEP, alignedY, 0);
     } else {
-      // B desciende en Y: cierra gap + penetra penDist
-      assembled = {
-        x: 0,
-        y: -(gapY + penDist),
-      };
+      // Pieza B comienza justo encima de pieza A
+      startPos = new THREE.Vector3(0, geoA.boundingBox.max.y + SEP, 0);
     }
 
-    return { geoA, upperGroup: [geoB, ...auxGeos], assembled };
-  }, [rawGeo, axis, penetration, allComps]);
+    return { geoA, upperGroup: [geoB, ...auxGeos], startPos };
+  }, [rawGeo, allComps, axis]);
 
-  const { geoA, upperGroup, assembled } = state;
-  const t = progreso / 100;
+  // ── Llevar pieza B a la posición inicial ──────────────────────────────
+  const applyStart = () => {
+    posB.current.copy(startPos);
+    rotB.current.set(0, 0, 0);
+    if (groupBRef.current) {
+      groupBRef.current.position.copy(startPos);
+      groupBRef.current.rotation.set(0, 0, 0);
+    }
+  };
 
-  // ── Posición de geoA: siempre fija ────────────────────────────────────
-  const posA = [0, 0, 0];
+  // Inicializar al montar o cambiar modelo
+  useEffect(() => { applyStart(); }, [startPos]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Posición del grupo superior ───────────────────────────────────────
-  // axis='y': B viaja desde (assembled.y + SEP) hasta assembled.y
-  // axis='x': B viaja en X desde +SEP hasta 0 (Y corregida desde inicio)
-  const posB = axis === 'x'
-    ? [SEP * (1 - t), assembled.y, 0]
-    : [0, assembled.y + SEP * (1 - t), 0];
+  // Reset externo (botón Reset de la UI)
+  useEffect(() => { applyStart(); }, [triggerReset]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Brillo al completar el ensamble ──────────────────────────────────
-  useFrame(({ clock }) => {
-    if (matBRef.current) {
-      matBRef.current.emissiveIntensity = progreso >= 100
-        ? 0.18 + Math.sin(clock.getElapsedTime() * 2.5) * 0.10
-        : 0;
+  // ── Listeners de teclado ──────────────────────────────────────────────
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      const k = e.key.toLowerCase();
+      if (['w','s','a','d','i','k'].includes(k)) {
+        // Evitar scroll o comportamiento de browser
+        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+        }
+      }
+      keys.current[k] = true;
+    };
+    const onKeyUp = (e) => { keys.current[e.key.toLowerCase()] = false; };
+
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup',   onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup',   onKeyUp);
+    };
+  }, []);
+
+  // ── Movimiento fluido frame a frame ──────────────────────────────────
+  useFrame((_, delta) => {
+    const k    = keys.current;
+    let moved  = false;
+    const d    = Math.min(delta, 0.05); // clampear delta para evitar saltos al cambiar tab
+
+    if (k['w']) { posB.current.y += MOVE_SPEED * d; moved = true; }
+    if (k['s']) { posB.current.y -= MOVE_SPEED * d; moved = true; }
+    if (k['a']) { posB.current.x -= MOVE_SPEED * d; moved = true; }
+    if (k['d']) { posB.current.x += MOVE_SPEED * d; moved = true; }
+    if (k['i']) { rotB.current.x += ROT_SPEED  * d; moved = true; }
+    if (k['k']) { rotB.current.y += ROT_SPEED  * d; moved = true; }
+
+    if (moved && groupBRef.current) {
+      groupBRef.current.position.copy(posB.current);
+      groupBRef.current.rotation.copy(rotB.current);
     }
   });
 
@@ -210,29 +222,26 @@ function STLPiezasUnion({ url, progreso, mostrarCotas, tolerancias, ensamble = {
 
   return (
     <group>
-      {/* Pieza A — fija (receptora / inferior) */}
-      <mesh castShadow receiveShadow geometry={geoA} position={posA}>
-        <meshStandardMaterial
-          color={COL_A} roughness={0.70} metalness={0.05}
-          emissive={COL_A} emissiveIntensity={progreso >= 100 ? 0.15 : 0}
-        />
+      {/* ── Pieza A — estática ─────────────────────────────────────────── */}
+      <mesh castShadow receiveShadow geometry={geoA} position={[0, 0, 0]}>
+        <meshStandardMaterial color={COL_A} roughness={0.70} metalness={0.05} />
       </mesh>
 
-      {/* Grupo superior — geoB + componentes auxiliares (tarugos, etc.) */}
-      {upperGroup.map((geo, i) => (
-        <mesh key={i} castShadow receiveShadow geometry={geo} position={posB}>
-          <meshStandardMaterial
-            ref={i === 0 ? matBRef : undefined}
-            color={i === 0 ? COL_B : COL_AUX}
-            roughness={0.70} metalness={0.05}
-            emissive={i === 0 ? COL_B : COL_AUX}
-            emissiveIntensity={0}
-          />
-        </mesh>
-      ))}
+      {/* ── Pieza B + tarugos — movibles ──────────────────────────────── */}
+      <group ref={groupBRef}>
+        {upperGroup.map((geo, i) => (
+          <mesh key={i} castShadow receiveShadow geometry={geo}>
+            <meshStandardMaterial
+              color={i === 0 ? COL_B : COL_AUX}
+              roughness={0.70}
+              metalness={0.05}
+            />
+          </mesh>
+        ))}
+      </group>
 
-      {/* Cotas técnicas — solo al ensamblar */}
-      {mostrarCotas && progreso >= 100 && bboxA && tolerancias?.map((tol, i) => {
+      {/* ── Cotas técnicas (siempre visibles cuando activo) ───────────── */}
+      {mostrarCotas && bboxA && tolerancias?.map((tol, i) => {
         const angle = (i / tolerancias.length) * Math.PI - Math.PI / 4;
         const r     = (bboxA.max.x - bboxA.min.x) * 0.7 + 1.8;
         return (
@@ -278,7 +287,7 @@ function LoadingFallback() {
 // Componente público: VisorCanvas
 // ══════════════════════════════════════════════════════════════════════════
 
-export default function VisorCanvas({ modelo, progreso, mostrarCotas }) {
+export default function VisorCanvas({ modelo, mostrarCotas, triggerReset }) {
   if (!modelo) return null;
 
   return (
@@ -300,12 +309,12 @@ export default function VisorCanvas({ modelo, progreso, mostrarCotas }) {
       <pointLight position={[0, 8, 0]} intensity={0.35} color="#fff5e0" />
 
       <Suspense fallback={<LoadingFallback />}>
-        <STLPiezasUnion
+        <PiezasManual
           url={modelo.stl}
-          progreso={progreso}
           mostrarCotas={mostrarCotas}
           tolerancias={modelo.tolerancias}
           ensamble={modelo.ensamble}
+          triggerReset={triggerReset}
         />
       </Suspense>
 
@@ -318,8 +327,8 @@ export default function VisorCanvas({ modelo, progreso, mostrarCotas }) {
       />
       <OrbitControls
         makeDefault enablePan enableZoom
-        minDistance={5} maxDistance={28}
-        minPolarAngle={0.15} maxPolarAngle={Math.PI / 1.85}
+        minDistance={4} maxDistance={32}
+        minPolarAngle={0.1} maxPolarAngle={Math.PI / 1.8}
       />
     </Canvas>
   );

@@ -4,16 +4,16 @@
  * Pantalla de catálogo interactivo del Taller de Ebanistería.
  * Tres zonas:
  *   1. Menú Lateral  — Catálogo tipo acordeón (Ensambles / Juntas / Empalmes)
- *   2. Lienzo 3D     — Visor con 4 fases de fabricación
- *   3. Panel Inferior — Slider + botón Ensamblar + herramienta Cotas
+ *   2. Lienzo 3D     — Visor con control de teclado (WASD + IK)
+ *   3. Panel Inferior — Leyenda de teclado + botones Cotas y Reiniciar
  *
  * Plataforma: MSE-SFT Ebanistería — PRONIED / MINEDU
  */
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import MenuLateral from './MenuLateral';
 import VisorCanvas from './VisorCanvas';
-import { CATEGORIAS, FASE_LABELS } from './catalogoData';
+import { CATEGORIAS } from './catalogoData';
 import './styles.css';
 
 // Modelo inicial: N2 – Ensamble a Caja y Espiga
@@ -26,82 +26,33 @@ const IconCotas = () => (
   </svg>
 );
 
-const IconEnsamblar = () => (
+const IconReset = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-    <path d="M5 12h14M12 5l7 7-7 7" />
+    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+    <path d="M3 3v5h5" />
   </svg>
 );
-
-const IconSeparar = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-    <path d="M19 12H5M12 19l-7-7 7-7" />
-  </svg>
-);
-
-// ── Fase activa según progreso ───────────────────────────────────────────────
-function getFaseInfo(progreso) {
-  let idx = 0;
-  for (let i = FASE_LABELS.length - 1; i >= 0; i--) {
-    if (progreso >= FASE_LABELS[i].pct) { idx = i; break; }
-  }
-  return { idx, ...FASE_LABELS[idx] };
-}
 
 // ── Componente principal ─────────────────────────────────────────────────────
 export default function LandingEbanisteria() {
   const [modelo,    setModelo]    = useState(MODELO_DEFAULT);
-  const [progreso,  setProgreso]  = useState(0);
   const [modoCotas, setModoCotas] = useState(false);
   const [canvasKey, setCanvasKey] = useState(0);
-  const animRef = useRef(null);
-
-  // Limpiar animación al desmontar
-  useEffect(() => () => { if (animRef.current) cancelAnimationFrame(animRef.current); }, []);
+  const [resetKey,  setResetKey]  = useState(0);
 
   const handleSelectModelo = useCallback((m) => {
-    if (animRef.current) cancelAnimationFrame(animRef.current);
     setModelo(m);
-    setProgreso(0);
     setModoCotas(false);
     setCanvasKey(k => k + 1);
   }, []);
 
-  const handleProgreso = useCallback((e) => {
-    if (animRef.current) cancelAnimationFrame(animRef.current);
-    setProgreso(Number(e.target.value));
+  const handleCotas = useCallback(() => {
+    setModoCotas(v => !v);
   }, []);
 
-  const handleCotas = useCallback(() => {
-    setModoCotas(v => {
-      // Las cotas se muestran sobre el modelo ensamblado (100%)
-      if (!v && progreso < 100) setProgreso(100);
-      return !v;
-    });
-  }, [progreso]);
-
-  // Botón "Ensamblar": anima el slider hasta 100%.
-  // Si ya está ensamblado, vuelve a la fase separada (0%).
-  const handleEnsamblar = useCallback(() => {
-    if (animRef.current) cancelAnimationFrame(animRef.current);
-
-    if (progreso >= 100) {
-      setProgreso(0);
-      return;
-    }
-
-    const step = () => {
-      setProgreso(prev => {
-        const next = Math.min(100, prev + 1.2);
-        if (next < 100) animRef.current = requestAnimationFrame(step);
-        return next;
-      });
-    };
-    animRef.current = requestAnimationFrame(step);
-  }, [progreso]);
-
-  const faseInfo       = getFaseInfo(progreso);
-  const enPiezaCortada = true;   // botón Ensamblar siempre visible
-  const ensamblado     = progreso >= 100;
+  const handleReset = useCallback(() => {
+    setResetKey(k => k + 1);
+  }, []);
 
   return (
     <div className="le-root">
@@ -119,8 +70,8 @@ export default function LandingEbanisteria() {
           <VisorCanvas
             key={canvasKey}
             modelo={modelo}
-            progreso={progreso}
             mostrarCotas={modoCotas}
+            triggerReset={resetKey}
           />
 
           {/* Badge: modelo activo */}
@@ -129,23 +80,10 @@ export default function LandingEbanisteria() {
             <span>{modelo.id} · {modelo.label}</span>
           </div>
 
-          {/* Badge: fase activa */}
-          <div className="le-fase-badge">
-            <span className="le-fase-dot" />
-            {faseInfo.label}
-          </div>
-
           {/* Banner modo cotas */}
-          {modoCotas && enPiezaCortada && (
+          {modoCotas && (
             <div className="le-cotas-banner">
               📐 Modo Cotas y Tolerancias activo
-            </div>
-          )}
-
-          {/* Banner ensamblaje completo */}
-          {ensamblado && (
-            <div className="le-ensamble-banner">
-              ✓ Ensamblaje completo
             </div>
           )}
         </div>
@@ -153,54 +91,50 @@ export default function LandingEbanisteria() {
         {/* ══ 3. PANEL DE CONTROLES INFERIOR ═══════════════════════════════ */}
         <div className="le-controls">
 
-          {/* Etiquetas de fase sobre el slider */}
-          <div className="le-slider-phases">
-            {FASE_LABELS.map((f, i) => (
-              <div
-                key={i}
-                className={`le-phase-tick ${faseInfo.idx === i ? 'le-phase-tick--active' : ''}`}
-                title={f.desc}
-                onClick={() => {
-                  if (animRef.current) cancelAnimationFrame(animRef.current);
-                  setProgreso(f.pct);
-                }}
-                style={{ cursor: 'pointer' }}
-              >
-                <div className="le-phase-tick-dot" />
-                {f.label}
+          {/* Leyenda de teclado */}
+          <div className="le-keyboard-legend">
+            <div className="le-legend-group">
+              <span className="le-legend-title">Mover pieza</span>
+              <div className="le-legend-keys">
+                <kbd>W</kbd><span>arriba</span>
+                <kbd>S</kbd><span>abajo</span>
+                <kbd>A</kbd><span>izquierda</span>
+                <kbd>D</kbd><span>derecha</span>
               </div>
-            ))}
+            </div>
+            <div className="le-legend-sep" />
+            <div className="le-legend-group">
+              <span className="le-legend-title">Rotar pieza</span>
+              <div className="le-legend-keys">
+                <kbd>I</kbd><span>eje X</span>
+                <kbd>K</kbd><span>eje Y</span>
+              </div>
+            </div>
+            <div className="le-legend-sep" />
+            <div className="le-legend-group">
+              <span className="le-legend-title">Cámara</span>
+              <div className="le-legend-keys">
+                <kbd>🖱</kbd><span>orbitar / zoom</span>
+              </div>
+            </div>
           </div>
 
-          {/* Slider de línea de tiempo */}
-          <input
-            type="range"
-            min="0" max="100" step="1"
-            value={progreso}
-            onChange={handleProgreso}
-            className="le-timeline-slider"
-            style={{ '--progress': `${progreso}%` }}
-            aria-label="Línea de tiempo de fabricación"
-          />
-
-          {/* Fila inferior: descripción + herramientas */}
+          {/* Fila de botones */}
           <div className="le-controls-row">
             <p className="le-fase-desc">
-              <strong>{faseInfo.label}:</strong> {faseInfo.desc}
+              Usa el teclado para mover y rotar la pieza B libremente.
             </p>
 
             <div className="le-tools">
-              {/* Botón Ensamblar — aparece en fase "Pieza cortada" */}
-              {enPiezaCortada && (
-                <button
-                  className={`le-tool-btn le-tool-btn--ensamblar ${ensamblado ? 'le-tool-btn--active' : ''}`}
-                  onClick={handleEnsamblar}
-                  title={ensamblado ? 'Separar las piezas' : 'Animar el ensamblaje de las dos piezas'}
-                >
-                  {ensamblado ? <IconSeparar /> : <IconEnsamblar />}
-                  {ensamblado ? 'Separar piezas' : 'Ensamblar piezas'}
-                </button>
-              )}
+              {/* Botón Reiniciar */}
+              <button
+                className="le-tool-btn"
+                onClick={handleReset}
+                title="Devuelve la pieza B a su posición inicial"
+              >
+                <IconReset />
+                Reiniciar posición
+              </button>
 
               {/* Botón Cotas */}
               <button
