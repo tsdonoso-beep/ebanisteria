@@ -1,16 +1,17 @@
 /**
  * VisorCanvas.jsx — Simulador 3D de Ensambles
  * ─────────────────────────────────────────────────────────────────────────
- * Muestra las 2 piezas de cada unión directamente desde el STL.
  * Línea de tiempo de 2 fases:
- *   0%   → Piezas separadas (se ve claramente cada pieza)
- *   100% → Piezas ensambladas (unión completa)
+ *   0%   → Piezas separadas (visualmente claras)
+ *   100% → Piezas ensambladas (la pieza B penetra en A como en el ensamble real)
  *
  * Algoritmo:
- *   1. Cargar STL (contiene las 2 piezas como una sola malla)
- *   2. Detectar componentes conectados con Union-Find
- *   3. Separar en 2 geometrías independientes
- *   4. Animar desde posición separada → posición ensamblada
+ *   1. Cargar STL (contiene las 2 piezas SEPARADAS como una sola malla)
+ *   2. Union-Find para detectar los componentes conectados
+ *   3. Ordenar por volumen de bounding-box (descarte dowels/tarugos pequeños)
+ *   4. Calcular posición de ensamble: cerrar el gap + penetración = 50% de la
+ *      pieza más corta (p.ej. el tenón entra en la mortaja)
+ *   5. Animar B desde posición separada → posición ensamblada
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -20,49 +21,40 @@ import { OrbitControls, ContactShadows, Grid, Html } from '@react-three/drei';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import * as THREE from 'three';
 
-// ── Colores madera ─────────────────────────────────────────────────────────
-const COL_A = '#c8922a';   // madera clara (pieza inferior)
-const COL_B = '#8b5e1a';   // madera oscura (pieza superior)
+// ── Colores ────────────────────────────────────────────────────────────────
+const COL_A = '#c8922a';   // madera clara  (pieza inferior / receptora)
+const COL_B = '#7b4f1a';   // madera oscura (pieza superior / insertada)
 
-// Amplitud de separación en unidades de escena
-const SEP = 2.6;
+// ── Amplitud de separación extra al 0% (unidades de escena) ───────────────
+const SEP = 2.5;
 
 // ══════════════════════════════════════════════════════════════════════════
-// SPLIT STL — Detectar componentes conectados con Union-Find
-// Agrupa los triángulos de la malla por adyacencia de vértices compartidos.
-// Devuelve las 2 geometrías más grandes como piezas independientes.
+// splitMeshByComponents
+// Union-Find sobre los triángulos de la malla.
+// Devuelve las geometrías ordenadas por VOLUMEN de bounding-box (descendente)
+// → esto descarta piezas pequeñas como tarugos/dowels automáticamente.
 // ══════════════════════════════════════════════════════════════════════════
 
 function splitMeshByComponents(geometry) {
   const pos   = geometry.attributes.position;
-  const nVert = pos.count; // 3 vértices × número de triángulos
+  const nVert = pos.count;
 
-  // ── Paso 1: Unir vértices con la misma posición (tolerancia 0.001) ──
-  // Mapa "x,y,z" → índice canónico
+  // ── Paso 1: Mapear vértices con la misma posición a un índice canónico ──
   const posMap = new Map();
   const canon  = new Int32Array(nVert);
-
   for (let i = 0; i < nVert; i++) {
     const kx = Math.round(pos.getX(i) * 1000);
     const ky = Math.round(pos.getY(i) * 1000);
     const kz = Math.round(pos.getZ(i) * 1000);
     const key = `${kx},${ky},${kz}`;
-    if (posMap.has(key)) {
-      canon[i] = posMap.get(key);
-    } else {
-      posMap.set(key, i);
-      canon[i] = i;
-    }
+    if (posMap.has(key)) { canon[i] = posMap.get(key); }
+    else { posMap.set(key, i); canon[i] = i; }
   }
 
-  // ── Paso 2: Union-Find sobre índices canónicos ──
+  // ── Paso 2: Union-Find ──────────────────────────────────────────────────
   const parent = Int32Array.from({ length: nVert }, (_, i) => i);
-
   function find(a) {
-    while (parent[a] !== a) {
-      parent[a] = parent[parent[a]];
-      a = parent[a];
-    }
+    while (parent[a] !== a) { parent[a] = parent[parent[a]]; a = parent[a]; }
     return a;
   }
   function union(a, b) {
@@ -72,14 +64,11 @@ function splitMeshByComponents(geometry) {
 
   const numTris = Math.floor(nVert / 3);
   for (let t = 0; t < numTris; t++) {
-    const v0 = canon[t * 3];
-    const v1 = canon[t * 3 + 1];
-    const v2 = canon[t * 3 + 2];
-    union(v0, v1);
-    union(v1, v2);
+    union(canon[t * 3], canon[t * 3 + 1]);
+    union(canon[t * 3 + 1], canon[t * 3 + 2]);
   }
 
-  // ── Paso 3: Agrupar triángulos por componente raíz ──
+  // ── Paso 3: Agrupar triángulos por raíz ───────────────────────────────
   const groups = new Map();
   for (let t = 0; t < numTris; t++) {
     const root = find(canon[t * 3]);
@@ -87,15 +76,11 @@ function splitMeshByComponents(geometry) {
     groups.get(root).push(t);
   }
 
-  // Ordenar de mayor a menor
-  const sorted = [...groups.values()].sort((a, b) => b.length - a.length);
-
-  // ── Paso 4: Construir geometrías para las 2 piezas más grandes ──
+  // ── Paso 4: Construir geometrías para todos los componentes ────────────
   const hasNormal = !!geometry.attributes.normal;
-  const geos = [];
+  const allGeos   = [];
 
-  for (let g = 0; g < Math.min(2, sorted.length); g++) {
-    const tris   = sorted[g];
+  for (const tris of groups.values()) {
     const vCount = tris.length * 3;
     const posArr = new Float32Array(vCount * 3);
     const nrmArr = new Float32Array(vCount * 3);
@@ -121,22 +106,34 @@ function splitMeshByComponents(geometry) {
       geo.computeVertexNormals();
     }
     geo.computeBoundingBox();
-    geos.push(geo);
+    allGeos.push(geo);
   }
 
-  return geos;
+  // ── Paso 5: Ordenar por VOLUMEN de bounding-box (desc) ─────────────────
+  // → las 2 piezas principales (tablas) tienen volumen >> dowels/tarugos
+  const sizeVec = new THREE.Vector3();
+  allGeos.sort((a, b) => {
+    a.boundingBox.getSize(sizeVec);
+    const va = sizeVec.x * sizeVec.y * sizeVec.z;
+    b.boundingBox.getSize(sizeVec);
+    const vb = sizeVec.x * sizeVec.y * sizeVec.z;
+    return vb - va;
+  });
+
+  return allGeos;  // las 2 primeras son siempre las piezas principales
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// STLPiezasUnion — Carga, divide y anima las 2 piezas del STL
+// STLPiezasUnion
 // ══════════════════════════════════════════════════════════════════════════
 
 function STLPiezasUnion({ url, progreso, mostrarCotas, tolerancias }) {
-  const rawGeo = useLoader(STLLoader, url);
+  const rawGeo  = useLoader(STLLoader, url);
   const matBRef = useRef();
 
-  const { geoA, geoB, sepVec } = useMemo(() => {
-    // ── Normalizar geometría completa ──────────────────────────────────
+  // ── Preprocesar y calcular posición de ensamble ──────────────────────
+  const { geoA, geoB, assembledPosB } = useMemo(() => {
+    // Centrar y escalar la malla completa a ~5.5 unidades
     const geo = rawGeo.clone();
     geo.computeBoundingBox();
     geo.center();
@@ -146,86 +143,86 @@ function STLPiezasUnion({ url, progreso, mostrarCotas, tolerancias }) {
     geo.scale(escala, escala, escala);
     geo.computeVertexNormals();
 
-    // ── Dividir en 2 piezas ─────────────────────────────────────────────
+    // Dividir en componentes (ordenados por volumen)
     const partes = splitMeshByComponents(geo);
 
     if (partes.length < 2) {
-      // Solo 1 componente — fallback: mostrar el STL completo
+      // Solo 1 componente — mostrar completo sin animación
       partes[0].computeBoundingBox();
-      return { geoA: partes[0], geoB: null, sepVec: new THREE.Vector3(0, 1, 0) };
+      return { geoA: partes[0], geoB: null, assembledPosB: 0 };
     }
 
-    const [p1, p2] = partes;
+    // Tomar las 2 piezas de mayor volumen
+    const p1 = partes[0];
+    const p2 = partes[1];
 
-    // Centros de cada pieza
-    const c1 = new THREE.Vector3();
-    const c2 = new THREE.Vector3();
-    p1.boundingBox.getCenter(c1);
-    p2.boundingBox.getCenter(c2);
+    // geoA = pieza inferior (centro Y más bajo), geoB = pieza superior
+    const cy1 = (p1.boundingBox.min.y + p1.boundingBox.max.y) / 2;
+    const cy2 = (p2.boundingBox.min.y + p2.boundingBox.max.y) / 2;
+    const [geoA, geoB] = cy1 <= cy2 ? [p1, p2] : [p2, p1];
 
-    // Pieza A = la que tiene centro Y más bajo (inferior)
-    const [geoA, geoB] = c1.y <= c2.y ? [p1, p2] : [p2, p1];
+    // Gap entre piezas en el STL (siempre > 0 porque vienen separadas)
+    const gapY = geoB.boundingBox.min.y - geoA.boundingBox.max.y;
 
-    // Vector de separación apunta de A hacia B (normalizado)
-    const aCenter = c1.y <= c2.y ? c1 : c2;
-    const bCenter = c1.y <= c2.y ? c2 : c1;
-    const sepVec  = new THREE.Vector3().subVectors(bCenter, aCenter).normalize();
+    // Penetración para el ensamble: 50% de la altura de la pieza más corta
+    // → el tenón/espiga entra en la mortaja, la lengüeta en la ranura, etc.
+    const hA = geoA.boundingBox.max.y - geoA.boundingBox.min.y;
+    const hB = geoB.boundingBox.max.y - geoB.boundingBox.min.y;
+    const penetracion = Math.min(hA, hB) * 0.50;
 
-    return { geoA, geoB, sepVec };
+    // Posición Y de geoB cuando está ensamblada:
+    // geoB se desplaza hacia abajo → cierra el gap Y entra en geoA
+    const assembledPosB = -(gapY + penetracion);
+
+    return { geoA, geoB, assembledPosB };
   }, [rawGeo]);
 
-  // ── Interpolación lineal: 0% separado → 100% ensamblado ──────────────
-  const t = progreso / 100;
-  const posA = [
-    -sepVec.x * SEP * (1 - t),
-    -sepVec.y * SEP * (1 - t),
-    -sepVec.z * SEP * (1 - t),
-  ];
-  const posB = [
-    sepVec.x * SEP * (1 - t),
-    sepVec.y * SEP * (1 - t),
-    sepVec.z * SEP * (1 - t),
-  ];
+  // ── Interpolación: 0% separado → 100% ensamblado ─────────────────────
+  // geoA: fija en [0,0,0]
+  // geoB: va desde (assembledPosB + SEP) hasta (assembledPosB)
+  const t     = progreso / 100;
+  const posBy = assembledPosB + SEP * (1 - t);
 
-  // ── Brillo de completado al 100% ──────────────────────────────────────
+  // ── Brillo al completar el ensamble ──────────────────────────────────
   useFrame(({ clock }) => {
     if (matBRef.current && progreso >= 100) {
       matBRef.current.emissiveIntensity =
-        0.20 + Math.sin(clock.getElapsedTime() * 2.5) * 0.12;
+        0.18 + Math.sin(clock.getElapsedTime() * 2.5) * 0.10;
+    } else if (matBRef.current) {
+      matBRef.current.emissiveIntensity = 0;
     }
   });
 
-  // Bounding box de geoA para posicionar cotas
   const bboxA = geoA?.boundingBox;
 
   return (
     <group>
-      {/* Pieza A — inferior */}
-      <mesh castShadow receiveShadow geometry={geoA} position={posA}>
+      {/* Pieza A — fija (inferior / receptora) */}
+      <mesh castShadow receiveShadow geometry={geoA} position={[0, 0, 0]}>
         <meshStandardMaterial
           color={COL_A}
-          roughness={0.68}
-          metalness={0.06}
+          roughness={0.70}
+          metalness={0.05}
           emissive={COL_A}
-          emissiveIntensity={progreso >= 100 ? 0.18 : 0}
+          emissiveIntensity={progreso >= 100 ? 0.15 : 0}
         />
       </mesh>
 
-      {/* Pieza B — superior */}
+      {/* Pieza B — animada (superior / insertada) */}
       {geoB && (
-        <mesh castShadow receiveShadow geometry={geoB} position={posB}>
+        <mesh castShadow receiveShadow geometry={geoB} position={[0, posBy, 0]}>
           <meshStandardMaterial
             ref={matBRef}
             color={COL_B}
-            roughness={0.68}
-            metalness={0.06}
+            roughness={0.70}
+            metalness={0.05}
             emissive={COL_B}
-            emissiveIntensity={progreso >= 100 ? 0.20 : 0}
+            emissiveIntensity={0}
           />
         </mesh>
       )}
 
-      {/* Cotas técnicas — solo cuando está ensamblado */}
+      {/* Cotas técnicas — visibles solo al ensamblar */}
       {mostrarCotas && progreso >= 100 && bboxA && tolerancias?.map((tol, i) => {
         const angle = (i / tolerancias.length) * Math.PI - Math.PI / 4;
         const r     = (bboxA.max.x - bboxA.min.x) * 0.7 + 1.8;
@@ -255,7 +252,7 @@ function STLPiezasUnion({ url, progreso, mostrarCotas, tolerancias }) {
   );
 }
 
-// ── Indicador de carga ────────────────────────────────────────────────────
+// ── Indicador de carga ─────────────────────────────────────────────────────
 function LoadingFallback() {
   const ref = useRef();
   useFrame(({ clock }) => {
@@ -284,10 +281,10 @@ export default function VisorCanvas({ modelo, progreso, mostrarCotas }) {
     >
       <color attach="background" args={['#0f172a']} />
 
-      <ambientLight intensity={0.40} />
+      <ambientLight intensity={0.45} />
       <directionalLight
         position={[6, 10, 6]}
-        intensity={1.5}
+        intensity={1.6}
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-camera-left={-8}
@@ -296,7 +293,7 @@ export default function VisorCanvas({ modelo, progreso, mostrarCotas }) {
         shadow-camera-bottom={-8}
       />
       <directionalLight position={[-5, 4, -5]} intensity={0.30} color="#a0c4ff" />
-      <pointLight position={[0, 8, 0]} intensity={0.40} color="#fff5e0" />
+      <pointLight position={[0, 8, 0]} intensity={0.35} color="#fff5e0" />
 
       <Suspense fallback={<LoadingFallback />}>
         <STLPiezasUnion
