@@ -20,7 +20,7 @@ export const CATEGORIAS = [
         // El código las convierte a espacio-escena para centrar cada tarugo en su agujero.
         ensamble: {
           axis: 'y', allComps: true, auxInBase: true,
-          holePositions: [{ x: 1011.6, z: 10.0 }, { x: 1052.3, z: 10.0 }],
+          holePositions: [{ x: 1017.0, z: 10.0 }, { x: 1047.0, z: 10.0 }],
         },
         tolerancias: [
           { parte: 'Tarugo Ø (macho)',      nominal: '10.0 mm', real: '9.8 mm',  nota: 'Huelgo -0.2 mm: expansión radial al absorber cola vinílica.' },
