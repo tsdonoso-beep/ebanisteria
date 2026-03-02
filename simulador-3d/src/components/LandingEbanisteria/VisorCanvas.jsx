@@ -1,15 +1,13 @@
 /**
  * VisorCanvas.jsx — Simulador 3D con control manual por teclado
  * ─────────────────────────────────────────────────────────────────────────
- * La pieza B se mueve libremente con WASD e IK.
+ * La pieza B se mueve libremente con WASD + HJ.
  * La pieza A permanece estática.
  *
  *  Movimiento pieza B:
  *    W → +Y (arriba)      S → -Y (abajo)
  *    A → -X (izquierda)   D → +X (derecha)
- *
- *  Rotación pieza B (continua mientras se mantiene la tecla):
- *    I → gira en eje X    K → gira en eje Y
+ *    H → +Z (adelante)    J → -Z (atrás)
  *
  *  Cámara: ratón / trackpad (OrbitControls)
  *
@@ -30,7 +28,6 @@ const COL_AUX = '#b07840';   // tarugos / clavijas
 
 // ── Velocidades ─────────────────────────────────────────────────────────────
 const MOVE_SPEED = 3.0;    // unidades / segundo
-const ROT_SPEED  = 1.8;    // radianes / segundo
 
 // ── Separación inicial de la pieza B respecto a A ──────────────────────────
 const SEP = 2.8;
@@ -113,9 +110,8 @@ function PiezasManual({ url, mostrarCotas, tolerancias, ensamble = {}, triggerRe
   const rawGeo   = useLoader(STLLoader, url);
   const groupBRef = useRef();
 
-  // Posición y rotación actuales de la pieza B (refs para no causar re-renders)
+  // Posición actual de la pieza B (ref para no causar re-renders)
   const posB = useRef(new THREE.Vector3());
-  const rotB = useRef(new THREE.Euler());
 
   // Estado de teclas presionadas
   const keys = useRef({});
@@ -164,7 +160,6 @@ function PiezasManual({ url, mostrarCotas, tolerancias, ensamble = {}, triggerRe
   // ── Llevar pieza B a la posición inicial ──────────────────────────────
   const applyStart = () => {
     posB.current.copy(startPos);
-    rotB.current.set(0, 0, 0);
     if (groupBRef.current) {
       groupBRef.current.position.copy(startPos);
       groupBRef.current.rotation.set(0, 0, 0);
@@ -181,7 +176,7 @@ function PiezasManual({ url, mostrarCotas, tolerancias, ensamble = {}, triggerRe
   useEffect(() => {
     const onKeyDown = (e) => {
       const k = e.key.toLowerCase();
-      if (['w','s','a','d','i','k'].includes(k)) {
+      if (['w','s','a','d','h','j'].includes(k)) {
         // Evitar scroll o comportamiento de browser
         if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
           e.preventDefault();
@@ -209,12 +204,11 @@ function PiezasManual({ url, mostrarCotas, tolerancias, ensamble = {}, triggerRe
     if (k['s']) { posB.current.y -= MOVE_SPEED * d; moved = true; }
     if (k['a']) { posB.current.x -= MOVE_SPEED * d; moved = true; }
     if (k['d']) { posB.current.x += MOVE_SPEED * d; moved = true; }
-    if (k['i']) { rotB.current.x += ROT_SPEED  * d; moved = true; }
-    if (k['k']) { rotB.current.y += ROT_SPEED  * d; moved = true; }
+    if (k['h']) { posB.current.z += MOVE_SPEED * d; moved = true; }
+    if (k['j']) { posB.current.z -= MOVE_SPEED * d; moved = true; }
 
     if (moved && groupBRef.current) {
       groupBRef.current.position.copy(posB.current);
-      groupBRef.current.rotation.copy(rotB.current);
     }
   });
 

@@ -96,18 +96,12 @@ export default function LandingEbanisteria() {
             <div className="le-legend-group">
               <span className="le-legend-title">Mover pieza</span>
               <div className="le-legend-keys">
-                <kbd>W</kbd><span>arriba</span>
-                <kbd>S</kbd><span>abajo</span>
-                <kbd>A</kbd><span>izquierda</span>
-                <kbd>D</kbd><span>derecha</span>
-              </div>
-            </div>
-            <div className="le-legend-sep" />
-            <div className="le-legend-group">
-              <span className="le-legend-title">Rotar pieza</span>
-              <div className="le-legend-keys">
-                <kbd>I</kbd><span>eje X</span>
-                <kbd>K</kbd><span>eje Y</span>
+                <kbd>W</kbd><span>+Y</span>
+                <kbd>S</kbd><span>-Y</span>
+                <kbd>A</kbd><span>-X</span>
+                <kbd>D</kbd><span>+X</span>
+                <kbd>H</kbd><span>+Z</span>
+                <kbd>J</kbd><span>-Z</span>
               </div>
             </div>
             <div className="le-legend-sep" />
@@ -122,7 +116,7 @@ export default function LandingEbanisteria() {
           {/* Fila de botones */}
           <div className="le-controls-row">
             <p className="le-fase-desc">
-              Usa el teclado para mover y rotar la pieza B libremente.
+              Usa el teclado para mover la pieza B en los tres ejes.
             </p>
 
             <div className="le-tools">
