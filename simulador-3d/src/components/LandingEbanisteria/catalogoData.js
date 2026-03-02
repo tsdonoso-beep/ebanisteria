@@ -14,6 +14,9 @@ export const CATEGORIAS = [
         id: 'N1', label: 'A Tarugo',
         familia: 'tarugo',
         stl: './models/01-tarugo.stl',
+        // Las 2 tablas se acercan en Y; los tarugos (cilindros pequeños) se muestran
+        // entre ellas y se animan junto con la tabla superior.
+        ensamble: { axis: 'y', penetration: 0, allComps: true },
         tolerancias: [
           { parte: 'Tarugo Ø (macho)',      nominal: '10.0 mm', real: '9.8 mm',  nota: 'Huelgo -0.2 mm: expansión radial al absorber cola vinílica.' },
           { parte: 'Perforación Ø (hembra)', nominal: '10.0 mm', real: '10.0 mm', nota: 'Profundidad = ½ longitud del tarugo + 2 mm de holgura axial.' },
@@ -23,6 +26,9 @@ export const CATEGORIAS = [
         id: 'N2', label: 'Caja y Espiga',
         familia: 'caja-espiga',
         stl: './models/02-caja-espiga.stl',
+        // La espiga (macho, estrecho) desciende en Y e ingresa a la caja (hembra, ancho).
+        // Penetración 55%: el tenón queda bien encajado dentro de la mortaja.
+        ensamble: { axis: 'y', penetration: 0.55 },
         tolerancias: [
           { parte: 'Caja (hembra) ancho',   nominal: '10.0 mm', real: '10.0 mm', nota: 'Medida nominal de referencia.' },
           { parte: 'Espiga (macho) ancho',   nominal: '10.0 mm', real: '9.8 mm',  nota: 'Tolerancia -0.2 mm: la madera se expande al humedecer con cola.' },
@@ -33,6 +39,9 @@ export const CATEGORIAS = [
         id: 'N3', label: 'A Horquilla',
         familia: 'horquilla',
         stl: './models/03-orquilla.stl',
+        // La lengüeta (macho, estrecho) desciende en Y entre los dos brazos de la
+        // horquilla (hembra, ancho). Penetración 55%.
+        ensamble: { axis: 'y', penetration: 0.55 },
         tolerancias: [
           { parte: 'Ranura horquilla ancho', nominal: '12.0 mm', real: '12.0 mm', nota: 'Ancho = 1/3 del espesor de la pieza.' },
           { parte: 'Lengüeta (macho) ancho', nominal: '12.0 mm', real: '11.8 mm', nota: 'Huelgo -0.2 mm para inserción sin cuña.' },
@@ -43,6 +52,9 @@ export const CATEGORIAS = [
         id: 'N4', label: 'Media Madera',
         familia: 'media-madera',
         stl: './models/04-media-madera.stl',
+        // En media madera los rebajes se complementan deslizando en X (horizontal).
+        // La pieza B se desplaza desde la derecha hacia su posición final sin penetrar en Y.
+        ensamble: { axis: 'x', penetration: 0 },
         tolerancias: [
           { parte: 'Rebaje profundidad A',   nominal: '½ espesor', real: '15.0 mm', nota: 'Exactamente la mitad del espesor de 30 mm.' },
           { parte: 'Rebaje profundidad B',   nominal: '½ espesor', real: '15.0 mm', nota: 'Ambas piezas simétricas; la suma = espesor total.' },
@@ -53,6 +65,9 @@ export const CATEGORIAS = [
         id: 'N5', label: 'Cola de Milano',
         familia: 'cola-milano',
         stl: './models/05-cola-milano.stl',
+        // La cola (macho, con ángulo de 9.5°) desciende en Y al encaje de la cola
+        // (hembra). Penetración completa: la cola debe quedar al ras de la cara superior.
+        ensamble: { axis: 'y', penetration: 0.80 },
         tolerancias: [
           { parte: 'Ángulo cola (madera blanda)', nominal: '1:6 (9.5°)', real: '9.5°', nota: 'Para coníferas; madera dura usa 1:8 (7.1°).' },
           { parte: 'Cola base (macho)',       nominal: '12.0 mm', real: '11.8 mm', nota: 'Huelgo -0.2 mm en flancos.' },
@@ -70,6 +85,9 @@ export const CATEGORIAS = [
         id: 'N6', label: 'A Tarugo',
         familia: 'tarugo',
         stl: './models/06-junta-tarugo.stl',
+        // Junta con tarugos: las 2 tablas se acercan; los tarugos visibles
+        // conectan las perforaciones de ambas piezas.
+        ensamble: { axis: 'y', penetration: 0, allComps: true },
         tolerancias: [
           { parte: 'Tarugo Ø',               nominal: '8.0 mm',  real: '7.8 mm',  nota: 'Huelgo -0.2 mm estándar. Espaciado máx. 150 mm entre tarugos.' },
           { parte: 'Perforación profundidad', nominal: '20.0 mm', real: '20.0 mm', nota: 'Igual en ambas piezas; centrado en el espesor.' },
@@ -79,6 +97,9 @@ export const CATEGORIAS = [
         id: 'N7', label: 'Machihembrada',
         familia: 'machihembrada',
         stl: './models/07-junta-machihembrada.stl',
+        // Lengüeta (macho) desciende en Y hacia la ranura (hembra).
+        // Penetración 40%: la lengüeta queda encajada en la ranura.
+        ensamble: { axis: 'y', penetration: 0.40 },
         tolerancias: [
           { parte: 'Ranura (hembra) ancho',  nominal: '6.0 mm',  real: '6.0 mm',  nota: 'Centrada en el canto de la pieza.' },
           { parte: 'Lengüeta (macho) ancho', nominal: '6.0 mm',  real: '5.8 mm',  nota: 'Huelgo -0.2 mm para facilitar el deslizamiento.' },
@@ -89,6 +110,8 @@ export const CATEGORIAS = [
         id: 'N8', label: 'Media Madera',
         familia: 'media-madera',
         stl: './models/08-junta-media-madera.stl',
+        // Junta de media madera: los rebajes se complementan deslizando en X.
+        ensamble: { axis: 'x', penetration: 0 },
         tolerancias: [
           { parte: 'Rebaje A (profundidad)',  nominal: '15.0 mm', real: '15.0 mm', nota: '½ del espesor de 30 mm.' },
           { parte: 'Rebaje B (profundidad)',  nominal: '15.0 mm', real: '15.0 mm', nota: 'Simétrico a A. Tolerancia 0 mm entre caras de contacto.' },
@@ -105,6 +128,8 @@ export const CATEGORIAS = [
         id: 'N9', label: 'Media Madera',
         familia: 'media-madera',
         stl: './models/09-empalme-media-madera.stl',
+        // Empalme de media madera: las dos mitades se deslizan en X para solapar.
+        ensamble: { axis: 'x', penetration: 0 },
         tolerancias: [
           { parte: 'Solapamiento mínimo',    nominal: '1.5× ancho', real: '60.0 mm', nota: 'Para pieza de 40 mm de ancho.' },
           { parte: 'Rebaje profundidad',      nominal: '½ espesor', real: '15.0 mm', nota: 'No exceder ½; reduce resistencia estructural.' },
@@ -114,6 +139,9 @@ export const CATEGORIAS = [
         id: 'N10', label: 'A Horquilla',
         familia: 'horquilla',
         stl: './models/10-empalme-horquilla.stl',
+        // Empalme a horquilla: la lengüeta desciende en Y entre los brazos.
+        // Penetración moderada (30%) para mostrar el encaje del empalme.
+        ensamble: { axis: 'y', penetration: 0.30 },
         tolerancias: [
           { parte: 'Ranura horquilla',       nominal: '12.0 mm', real: '12.0 mm', nota: 'Ancho = 1/3 espesor de la pieza.' },
           { parte: 'Lengüeta empalme',       nominal: '12.0 mm', real: '11.8 mm', nota: 'Huelgo -0.2 mm.' },
@@ -123,6 +151,8 @@ export const CATEGORIAS = [
         id: 'N11', label: 'Horquilla y Media M.',
         familia: 'horquilla',
         stl: './models/11-empalme-horquilla-media.stl',
+        // Una sola pieza en el STL (combinación ya ensamblada). Sin animación.
+        ensamble: { axis: 'y', penetration: 0 },
         tolerancias: [
           { parte: 'Rebaje media madera',    nominal: '½ espesor', real: '15.0 mm', nota: 'Primera parte del empalme compuesto.' },
           { parte: 'Ranura horquilla',       nominal: '12.0 mm', real: '12.0 mm', nota: 'Segunda parte; misma tolerancia que N10.' },
