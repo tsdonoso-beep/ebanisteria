@@ -101,13 +101,70 @@ function splitMeshByComponents(geometry) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
+// Corte geométrico: divide una malla por el punto medio de un eje dado.
+// Se usa como fallback cuando Union-Find no puede separar los componentes
+// (pieza con geometría internamente conectada, como N11).
+// ══════════════════════════════════════════════════════════════════════════
+
+function splitMeshGeometrically(geometry, axis) {
+  const ai = { x: 0, y: 1, z: 2 }[axis];
+  const pos = geometry.attributes.position;
+  const nTris = Math.floor(pos.count / 3);
+  const hasN  = !!geometry.attributes.normal;
+
+  // Encontrar el punto medio del eje
+  let lo = Infinity, hi = -Infinity;
+  for (let i = 0; i < pos.count; i++) {
+    const v = ai === 0 ? pos.getX(i) : ai === 1 ? pos.getY(i) : pos.getZ(i);
+    if (v < lo) lo = v;
+    if (v > hi) hi = v;
+  }
+  const mid = (lo + hi) / 2;
+
+  const trisA = [], trisB = [];
+  for (let t = 0; t < nTris; t++) {
+    const get = (i) => ai === 0 ? pos.getX(i) : ai === 1 ? pos.getY(i) : pos.getZ(i);
+    const c = (get(t*3) + get(t*3+1) + get(t*3+2)) / 3;
+    if (c <= mid) trisA.push(t); else trisB.push(t);
+  }
+
+  function buildGeo(tris) {
+    const pArr = new Float32Array(tris.length * 9);
+    const nArr = hasN ? new Float32Array(tris.length * 9) : null;
+    for (let vi = 0; vi < tris.length * 3; vi++) {
+      const orig = tris[Math.floor(vi/3)] * 3 + (vi % 3);
+      pArr[vi*3]   = pos.getX(orig);
+      pArr[vi*3+1] = pos.getY(orig);
+      pArr[vi*3+2] = pos.getZ(orig);
+      if (hasN) {
+        const n = geometry.attributes.normal;
+        nArr[vi*3] = n.getX(orig); nArr[vi*3+1] = n.getY(orig); nArr[vi*3+2] = n.getZ(orig);
+      }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pArr, 3));
+    if (hasN) geo.setAttribute('normal', new THREE.BufferAttribute(nArr, 3));
+    else geo.computeVertexNormals();
+    geo.computeBoundingBox();
+    return geo;
+  }
+
+  return [buildGeo(trisA), buildGeo(trisB)];
+}
+
+// ══════════════════════════════════════════════════════════════════════════
 // PiezasManual — pieza A fija + pieza B controlada con teclado
 // ══════════════════════════════════════════════════════════════════════════
 
 function PiezasManual({ url, mostrarCotas, tolerancias, ensamble = {}, triggerReset }) {
-  const { axis = 'y', allComps = false } = ensamble;
+  const {
+    axis      = 'y',
+    allComps  = false,
+    auxInBase = false,   // tarugos quedan en la base estática
+    geoSplit  = false,   // usar corte geométrico si Union-Find no separa
+  } = ensamble;
 
-  const rawGeo   = useLoader(STLLoader, url);
+  const rawGeo    = useLoader(STLLoader, url);
   const groupBRef = useRef();
 
   // Posición actual de la pieza B (ref para no causar re-renders)
@@ -117,7 +174,7 @@ function PiezasManual({ url, mostrarCotas, tolerancias, ensamble = {}, triggerRe
   const keys = useRef({});
 
   // ── Geometrías y posición inicial ─────────────────────────────────────
-  const { geoA, upperGroup, startPos } = useMemo(() => {
+  const { geoA, auxBase, upperGroup, startPos } = useMemo(() => {
     const geo = rawGeo.clone();
     geo.computeBoundingBox();
     geo.center();
@@ -127,35 +184,69 @@ function PiezasManual({ url, mostrarCotas, tolerancias, ensamble = {}, triggerRe
     geo.scale(escala, escala, escala);
     geo.computeVertexNormals();
 
-    const partes = splitMeshByComponents(geo);
-    if (partes.length < 2) {
-      return { geoA: partes[0], upperGroup: [], startPos: new THREE.Vector3(0, SEP, 0) };
+    // 1. Intentar separar por componentes conectados
+    let partes = splitMeshByComponents(geo);
+
+    // 2. Fallback: corte geométrico si hay 1 sola pieza y geoSplit está activo
+    if (partes.length < 2 && geoSplit) {
+      partes = splitMeshGeometrically(geo, axis);
     }
 
-    const p1 = partes[0], p2 = partes[1];
-    const cy1 = (p1.boundingBox.min.y + p1.boundingBox.max.y) / 2;
-    const cy2 = (p2.boundingBox.min.y + p2.boundingBox.max.y) / 2;
-    const [geoA, geoB] = cy1 <= cy2 ? [p1, p2] : [p2, p1];
+    // 3. Sin separación posible → mostrar pieza única estática
+    if (partes.length < 2) {
+      return {
+        geoA: partes[0],
+        auxBase: [],
+        upperGroup: [],
+        startPos: new THREE.Vector3(0, SEP, 0),
+      };
+    }
 
-    // Tarugos / auxiliares
-    const midY   = (geoA.boundingBox.max.y + geoB.boundingBox.min.y) / 2;
+    // 4. Asignar geoA (base) y geoB (pieza móvil) por posición en el eje de ensamble
+    const p1 = partes[0], p2 = partes[1];
+    let geoA, geoB;
+
+    if (axis === 'z') {
+      const cz1 = (p1.boundingBox.min.z + p1.boundingBox.max.z) / 2;
+      const cz2 = (p2.boundingBox.min.z + p2.boundingBox.max.z) / 2;
+      [geoA, geoB] = cz1 <= cz2 ? [p1, p2] : [p2, p1];
+    } else {
+      const cy1 = (p1.boundingBox.min.y + p1.boundingBox.max.y) / 2;
+      const cy2 = (p2.boundingBox.min.y + p2.boundingBox.max.y) / 2;
+      [geoA, geoB] = cy1 <= cy2 ? [p1, p2] : [p2, p1];
+    }
+
+    // 5. Tarugos / auxiliares (componentes extra)
+    const midY    = (geoA.boundingBox.max.y + geoB.boundingBox.min.y) / 2;
     const auxGeos = allComps
       ? partes.slice(2).filter(g => (g.boundingBox.min.y + g.boundingBox.max.y) / 2 > midY)
       : [];
 
-    // Posición inicial separada
+    // 6. Posición inicial separada según eje de ensamble
     let startPos;
     if (axis === 'x') {
-      // Corrección Y para alinear los tops; pieza B comienza a la derecha
       const alignedY = -(geoB.boundingBox.max.y - geoA.boundingBox.max.y);
       startPos = new THREE.Vector3(SEP, alignedY, 0);
+    } else if (axis === 'z') {
+      startPos = new THREE.Vector3(0, 0, geoA.boundingBox.max.z + SEP);
     } else {
-      // Pieza B comienza justo encima de pieza A
       startPos = new THREE.Vector3(0, geoA.boundingBox.max.y + SEP, 0);
     }
 
-    return { geoA, upperGroup: [geoB, ...auxGeos], startPos };
-  }, [rawGeo, allComps, axis]);
+    // 7. Tarugos en base: reubicar a mitad de inserción en la cara superior de geoA
+    //    → la mitad del tarugo queda "dentro" de geoA y la mitad sobresale
+    if (auxInBase) {
+      const targetCy = geoA.boundingBox.max.y;
+      auxGeos.forEach(g => {
+        const cy = (g.boundingBox.min.y + g.boundingBox.max.y) / 2;
+        g.translate(0, targetCy - cy, 0);
+        g.computeBoundingBox();
+      });
+      return { geoA, auxBase: auxGeos, upperGroup: [geoB], startPos };
+    }
+
+    return { geoA, auxBase: [], upperGroup: [geoB, ...auxGeos], startPos };
+  }, [rawGeo, axis, allComps, auxInBase, geoSplit]);
 
   // ── Llevar pieza B a la posición inicial ──────────────────────────────
   const applyStart = () => {
@@ -177,7 +268,6 @@ function PiezasManual({ url, mostrarCotas, tolerancias, ensamble = {}, triggerRe
     const onKeyDown = (e) => {
       const k = e.key.toLowerCase();
       if (['w','s','a','d','h','j'].includes(k)) {
-        // Evitar scroll o comportamiento de browser
         if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
           e.preventDefault();
         }
@@ -198,7 +288,7 @@ function PiezasManual({ url, mostrarCotas, tolerancias, ensamble = {}, triggerRe
   useFrame((_, delta) => {
     const k    = keys.current;
     let moved  = false;
-    const d    = Math.min(delta, 0.05); // clampear delta para evitar saltos al cambiar tab
+    const d    = Math.min(delta, 0.05);
 
     if (k['w']) { posB.current.y += MOVE_SPEED * d; moved = true; }
     if (k['s']) { posB.current.y -= MOVE_SPEED * d; moved = true; }
@@ -221,7 +311,14 @@ function PiezasManual({ url, mostrarCotas, tolerancias, ensamble = {}, triggerRe
         <meshStandardMaterial color={COL_A} roughness={0.70} metalness={0.05} />
       </mesh>
 
-      {/* ── Pieza B + tarugos — movibles ──────────────────────────────── */}
+      {/* ── Tarugos en base — estáticos, mitad insertados en geoA ──────── */}
+      {auxBase.map((geo, i) => (
+        <mesh key={`base-${i}`} castShadow receiveShadow geometry={geo}>
+          <meshStandardMaterial color={COL_AUX} roughness={0.65} metalness={0.05} />
+        </mesh>
+      ))}
+
+      {/* ── Pieza B (+ tarugos si no están en base) — movibles ───────── */}
       <group ref={groupBRef}>
         {upperGroup.map((geo, i) => (
           <mesh key={i} castShadow receiveShadow geometry={geo}>
@@ -234,7 +331,7 @@ function PiezasManual({ url, mostrarCotas, tolerancias, ensamble = {}, triggerRe
         ))}
       </group>
 
-      {/* ── Cotas técnicas (siempre visibles cuando activo) ───────────── */}
+      {/* ── Cotas técnicas ────────────────────────────────────────────── */}
       {mostrarCotas && bboxA && tolerancias?.map((tol, i) => {
         const angle = (i / tolerancias.length) * Math.PI - Math.PI / 4;
         const r     = (bboxA.max.x - bboxA.min.x) * 0.7 + 1.8;

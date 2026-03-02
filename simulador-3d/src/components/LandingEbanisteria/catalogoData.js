@@ -14,9 +14,9 @@ export const CATEGORIAS = [
         id: 'N1', label: 'A Tarugo',
         familia: 'tarugo',
         stl: './models/01-tarugo.stl',
-        // Las 2 tablas se acercan en Y; los tarugos (cilindros pequeños) se muestran
-        // entre ellas y se animan junto con la tabla superior.
-        ensamble: { axis: 'y', penetration: 0, allComps: true },
+        // Las 2 tablas se acercan en Y; los tarugos quedan estáticos en la base
+        // (mitad insertados), la tabla superior desciende para recibirlos.
+        ensamble: { axis: 'y', allComps: true, auxInBase: true },
         tolerancias: [
           { parte: 'Tarugo Ø (macho)',      nominal: '10.0 mm', real: '9.8 mm',  nota: 'Huelgo -0.2 mm: expansión radial al absorber cola vinílica.' },
           { parte: 'Perforación Ø (hembra)', nominal: '10.0 mm', real: '10.0 mm', nota: 'Profundidad = ½ longitud del tarugo + 2 mm de holgura axial.' },
@@ -85,9 +85,9 @@ export const CATEGORIAS = [
         id: 'N6', label: 'A Tarugo',
         familia: 'tarugo',
         stl: './models/06-junta-tarugo.stl',
-        // Junta con tarugos: las 2 tablas se acercan; los tarugos visibles
-        // conectan las perforaciones de ambas piezas.
-        ensamble: { axis: 'y', penetration: 0, allComps: true },
+        // Junta con tarugos: tarugos estáticos en la base (mitad insertados),
+        // la segunda tabla desciende para recibirlos.
+        ensamble: { axis: 'y', allComps: true, auxInBase: true },
         tolerancias: [
           { parte: 'Tarugo Ø',               nominal: '8.0 mm',  real: '7.8 mm',  nota: 'Huelgo -0.2 mm estándar. Espaciado máx. 150 mm entre tarugos.' },
           { parte: 'Perforación profundidad', nominal: '20.0 mm', real: '20.0 mm', nota: 'Igual en ambas piezas; centrado en el espesor.' },
@@ -151,8 +151,9 @@ export const CATEGORIAS = [
         id: 'N11', label: 'Horquilla y Media M.',
         familia: 'horquilla',
         stl: './models/11-empalme-horquilla-media.stl',
-        // Una sola pieza en el STL (combinación ya ensamblada). Sin animación.
-        ensamble: { axis: 'y', penetration: 0 },
+        // El STL tiene ambas piezas fusionadas en un solo mesh conectado.
+        // Se usa corte geométrico por Z para separarlas en dos mitades interactivas.
+        ensamble: { axis: 'z', geoSplit: true },
         tolerancias: [
           { parte: 'Rebaje media madera',    nominal: '½ espesor', real: '15.0 mm', nota: 'Primera parte del empalme compuesto.' },
           { parte: 'Ranura horquilla',       nominal: '12.0 mm', real: '12.0 mm', nota: 'Segunda parte; misma tolerancia que N10.' },
