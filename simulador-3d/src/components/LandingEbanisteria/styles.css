@@ -1,0 +1,445 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   LandingEbanisteria — Layout y estilos
+   Paleta: Azul noche (#0f172a) + Madera (#c8922a) + MINEDU rojo (#B71C1C)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Root ──────────────────────────────────────────────────────────────────── */
+.le-root {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  min-height: 600px;
+  background: #0f172a;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  color: #f1f5f9;
+  overflow: hidden;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MENÚ LATERAL IZQUIERDO
+══════════════════════════════════════════════════════════════════════════ */
+
+.le-menu {
+  width: 256px;
+  min-width: 256px;
+  background: #1e293b;
+  border-right: 1px solid #334155;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #334155 transparent;
+  flex-shrink: 0;
+}
+.le-menu::-webkit-scrollbar { width: 4px; }
+.le-menu::-webkit-scrollbar-track { background: transparent; }
+.le-menu::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+
+.le-menu-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 14px 14px;
+  background: #B71C1C;
+  flex-shrink: 0;
+}
+
+.le-menu-logo { font-size: 26px; line-height: 1; }
+
+.le-menu-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.2px;
+}
+
+.le-menu-subtitle {
+  font-size: 10px;
+  color: rgba(255,255,255,0.7);
+  margin-top: 1px;
+}
+
+/* Categoría accordion */
+.le-categoria { border-bottom: 1px solid #334155; }
+
+.le-cat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.le-cat-header:hover { background: rgba(255,255,255,0.04); color: #f1f5f9; }
+
+.le-cat-arrow {
+  display: inline-block;
+  transition: transform 0.2s;
+  font-size: 10px;
+}
+.le-cat-arrow--open { transform: rotate(90deg); }
+
+.le-cat-items {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 4px;
+}
+
+.le-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 14px 8px 18px;
+  background: none;
+  border: none;
+  color: #cbd5e1;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s, color 0.12s;
+  border-left: 3px solid transparent;
+}
+.le-item:hover { background: rgba(255,255,255,0.05); color: #f1f5f9; }
+.le-item--active {
+  background: rgba(200, 146, 42, 0.12);
+  color: #f1c46a;
+  border-left-color: #c8922a;
+  font-weight: 600;
+}
+
+.le-item-code {
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748b;
+  min-width: 24px;
+}
+.le-item--active .le-item-code { color: #c8922a; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ZONA CENTRAL (visor 3D + badge + panel de controles)
+══════════════════════════════════════════════════════════════════════════ */
+
+.le-canvas-zone {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.le-viewer {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+  background: #0f172a;
+}
+
+.le-viewer canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Badge – nombre del modelo activo */
+.le-model-badge {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: #f1f5f9;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+  letter-spacing: 0.2px;
+  z-index: 10;
+}
+.le-model-badge-cat {
+  font-size: 10px;
+  color: #c8922a;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Badge – fase activa */
+.le-fase-badge {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: #f1f5f9;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 16px;
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.le-fase-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #c8922a;
+  animation: le-pulse 1.5s ease-in-out infinite;
+}
+@keyframes le-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PANEL DE CONTROLES INFERIOR
+══════════════════════════════════════════════════════════════════════════ */
+
+.le-controls {
+  background: rgba(15, 23, 42, 0.97);
+  border-top: 1px solid #1e293b;
+  backdrop-filter: blur(12px);
+  padding: 14px 28px 16px;
+  flex-shrink: 0;
+}
+
+/* Leyenda de teclado */
+.le-keyboard-legend {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 8px 14px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.le-legend-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.le-legend-title {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #475569;
+  white-space: nowrap;
+  min-width: 60px;
+}
+.le-legend-keys {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.le-legend-keys kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-bottom: 2px solid #475569;
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 10px;
+  font-family: monospace;
+  color: #c8922a;
+  font-weight: 700;
+  min-width: 22px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+}
+.le-legend-keys span {
+  font-size: 9px;
+  color: #64748b;
+  margin-right: 6px;
+}
+.le-legend-sep {
+  width: 1px;
+  height: 28px;
+  background: #1e293b;
+  flex-shrink: 0;
+  margin: 0 10px;
+}
+
+/* Row: descripción de fase + botones de herramientas */
+.le-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  gap: 12px;
+}
+
+.le-fase-desc {
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.45;
+  flex: 1;
+  min-width: 0;
+}
+.le-fase-desc strong { color: #94a3b8; }
+
+/* Botones de herramientas */
+.le-tools { display: flex; gap: 8px; flex-shrink: 0; }
+
+.le-tool-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.le-tool-btn:hover { border-color: #475569; color: #f1f5f9; background: #263348; }
+.le-tool-btn--active {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+
+/* Botón Ensamblar piezas — resaltado en dorado */
+.le-tool-btn--ensamblar {
+  background: rgba(200, 146, 42, 0.14);
+  border-color: #c8922a;
+  color: #f1c46a;
+}
+.le-tool-btn--ensamblar:hover {
+  background: rgba(200, 146, 42, 0.26);
+  border-color: #e0a83e;
+  color: #fde68a;
+}
+.le-tool-btn--ensamblar.le-tool-btn--active {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CARD DE COTA / TOLERANCIA (Html overlay en el canvas)
+══════════════════════════════════════════════════════════════════════════ */
+
+.le-cota-card {
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid #3b82f6;
+  border-radius: 8px;
+  padding: 8px 11px;
+  color: #f1f5f9;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 11px;
+  min-width: 160px;
+  max-width: 220px;
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  backdrop-filter: blur(8px);
+}
+.le-cota-parte {
+  font-size: 9px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 3px;
+}
+.le-cota-values {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin-bottom: 3px;
+}
+.le-cota-nominal { font-size: 10px; color: #64748b; text-decoration: line-through; }
+.le-cota-real    { font-size: 13px; font-weight: 800; color: #c8922a; }
+.le-cota-nota    { font-size: 10px; color: #64748b; line-height: 1.4; }
+
+/* Indicador de "Ensamblaje completo" */
+.le-ensamble-banner {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  background: rgba(200, 146, 42, 0.18);
+  border: 1px solid rgba(200, 146, 42, 0.5);
+  color: #f1c46a;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 16px;
+  border-radius: 20px;
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 10;
+  animation: le-fadeIn 0.4s ease;
+}
+
+@keyframes le-fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Indicador de "Modo Cotas activo" */
+.le-cotas-banner {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(59, 130, 246, 0.2);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  color: #93c5fd;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 16px;
+  border-radius: 20px;
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 800px) {
+  .le-menu { width: 200px; min-width: 200px; }
+}
+
+@media (max-width: 640px) {
+  .le-root { flex-direction: column; }
+  .le-menu {
+    width: 100%;
+    min-width: unset;
+    max-height: 35vh;
+    border-right: none;
+    border-bottom: 1px solid #334155;
+  }
+  .le-controls { padding: 10px 14px 12px; }
+}
