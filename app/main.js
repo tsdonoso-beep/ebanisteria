@@ -5,16 +5,17 @@
 // revisó, no en lo que apareció solo.
 
 import {
-  CENTROS_COSTO, PESTANA_REGISTRO,
+  PESTANA_REGISTRO, PESTANA_CONSOLIDADO, HEREDABLES,
   getClaveGemini, setClaveGemini, borrarClaveGemini, pareceClaveGemini, enmascarar,
-  getCentro, setCentro,
+  getProyecto, setProyecto,
 } from "./config.js";
 import { entrar, salir, sesion } from "./auth.js";
-import { preparar, agregar, huellasRegistradas } from "./sheets.js";
+import { preparar, agregar, yaRegistrado } from "./sheets.js";
 import { carpetaDelDia, subir, fechaCarpeta } from "./drive.js";
 import { aPaginas } from "./paginas.js";
-import { leer, probarClave } from "./lectura.js";
-import { estaCompleto, faltantes } from "./campos.js";
+import { leer, leerConsolidado, probarClave } from "./lectura.js";
+import { estaCompleto, faltantes, claveDe } from "./campos.js";
+import { cruzar, heredar, resumen } from "./conciliacion.js";
 
 const $ = (s) => document.querySelector(s);
 const crear = (tag, clase, texto) => {
@@ -24,9 +25,12 @@ const crear = (tag, clase, texto) => {
   return e;
 };
 
-/** Todo lo cargado en esta sesión, en orden de llegada. */
+/** Comprobantes cargados en esta sesión, en orden de llegada. */
 let comprobantes = [];
-let huellasPrevias = new Set();
+/** Líneas del consolidado leído, si hay uno. */
+let rendicion = null;
+let cruce = null;
+let previos = { huellas: new Set(), claves: new Set() };
 let trabajando = false;
 
 // --- avisos --------------------------------------------------------------
@@ -38,10 +42,14 @@ function avisar(texto, tono = "") {
   caja.textContent = texto;
   caja.className = `aviso ${tono} ${texto ? "visible" : ""}`;
   clearTimeout(temporizador);
-  if (texto && tono !== "trabajando") {
-    temporizador = setTimeout(() => avisar(""), 6000);
-  }
+  if (texto && tono !== "trabajando") temporizador = setTimeout(() => avisar(""), 7000);
 }
+
+const ocupado = (v) => {
+  trabajando = v;
+  document.body.classList.toggle("ocupado", v);
+  pintarBotones();
+};
 
 // --- sesión --------------------------------------------------------------
 
@@ -56,10 +64,10 @@ async function alEntrar() {
 
     avisar("Preparando la hoja de registro…", "trabajando");
     await preparar();
-    huellasPrevias = await huellasRegistradas();
+    previos = await yaRegistrado();
 
     avisar(delDominio ? "" : "Entraste con una cuenta de otro dominio.", delDominio ? "" : "malo");
-    renderizar();
+    pintar();
   } catch (e) {
     avisar(e.message, "malo");
   }
@@ -67,156 +75,239 @@ async function alEntrar() {
 
 function alSalir() {
   salir();
+  comprobantes.forEach((c) => URL.revokeObjectURL(c.url));
   comprobantes = [];
+  rendicion = cruce = null;
   document.body.classList.remove("dentro");
   $("#quien").textContent = "";
-  renderizar();
+  pintar();
 }
 
-// --- carga ---------------------------------------------------------------
+// --- carga de comprobantes ----------------------------------------------
 
-async function recibir(archivos) {
+async function recibirComprobantes(archivos) {
   const lista = [...archivos];
   if (!lista.length || trabajando) return;
 
-  if (!$("#centro").value) {
-    avisar("Elige el centro de costo antes de cargar.", "malo");
-    return;
-  }
-
-  trabajando = true;
-  actualizarBotones();
-
+  ocupado(true);
   try {
     avisar("Preparando las páginas…", "trabajando");
     const paginas = await aPaginas(lista, (t) => avisar(t, "trabajando"));
+    if (!paginas.length) return avisar("No había imágenes ni PDF en lo que cargaste.", "malo");
 
-    if (!paginas.length) {
-      avisar("No había imágenes ni PDF en lo que cargaste.", "malo");
-      return;
-    }
+    const proyecto = $("#proyecto").value.trim();
 
     for (const p of paginas) {
-      comprobantes.push({
-        ...p,
-        centro: $("#centro").value,
-        campos: null,
-        via: "",
-        estado: "leyendo",
-        repetido: huellasPrevias.has(p.huella),
-      });
-    }
-    renderizar();
+      const cual = `${p.origen}${p.totalPaginas > 1 ? ` · pág. ${p.pagina}` : ""}`;
+      avisar(`Leyendo ${cual}…`, "trabajando");
 
-    // En serie y no en paralelo: el OCR satura el hilo del navegador y
-    // lanzarlo todo junto vuelve la pestaña inmanejable sin terminar antes.
-    for (const c of comprobantes.filter((c) => c.estado === "leyendo")) {
-      const cual = `${c.origen}${c.totalPaginas > 1 ? ` · pág. ${c.pagina}` : ""}`;
+      let leidos;
       try {
-        avisar(`Leyendo ${cual}…`, "trabajando");
-        const { campos, via } = await leer(c, (t) => avisar(`${cual} — ${t}`, "trabajando"));
-        Object.assign(c, { campos, via, estado: "listo" });
+        leidos = await leer(p, (t) => avisar(`${cual} — ${t}`, "trabajando"));
       } catch (e) {
-        Object.assign(c, { campos: c.campos, estado: "error", error: e.message });
+        comprobantes.push({ ...p, estado: "error", error: e.message, campos: null });
+        pintar();
+        continue;
       }
-      renderizar();
+
+      // Una imagen puede traer varios comprobantes: cada uno es su propia
+      // fila, aunque compartan archivo y huella.
+      leidos.forEach((r, i) => {
+        comprobantes.push({
+          ...p,
+          id: `${p.id}-${i}`,
+          indice: i,
+          deVarios: leidos.length > 1,
+          campos: { ...r.campos, proyecto: r.campos.proyecto || proyecto },
+          via: r.via,
+          sospechaVarios: r.sospechaVarios,
+          estado: "listo",
+        });
+      });
+      pintar();
     }
+
+    recalcularCruce();
     avisar("");
   } catch (e) {
     avisar(e.message, "malo");
   } finally {
-    trabajando = false;
-    actualizarBotones();
-    renderizar();
+    ocupado(false);
+    pintar();
+  }
+}
+
+// --- carga del consolidado ----------------------------------------------
+
+async function recibirConsolidado(archivos) {
+  const lista = [...archivos];
+  if (!lista.length || trabajando) return;
+
+  if (!getClaveGemini()) {
+    return avisar("Leer un consolidado necesita clave de IA: es una tabla, no un comprobante.", "malo");
+  }
+
+  ocupado(true);
+  try {
+    const paginas = await aPaginas(lista, (t) => avisar(t, "trabajando"));
+    if (!paginas.length) return avisar("No se pudo abrir ese archivo.", "malo");
+
+    const acumulado = { caja: "", administrador: "", montoAsignado: "", gastosRealizados: "", lineas: [] };
+
+    for (const [i, p] of paginas.entries()) {
+      avisar(`Leyendo el consolidado — página ${i + 1} de ${paginas.length}…`, "trabajando");
+      const parte = await leerConsolidado(p, (t) => avisar(t, "trabajando"));
+
+      // La cabecera solo viene en la primera página; las demás traen tabla.
+      acumulado.caja ||= parte.caja;
+      acumulado.administrador ||= parte.administrador;
+      acumulado.montoAsignado ||= parte.montoAsignado;
+      acumulado.gastosRealizados ||= parte.gastosRealizados;
+      acumulado.lineas.push(...parte.lineas);
+    }
+
+    acumulado.origen = lista[0].name;
+    rendicion = acumulado;
+    recalcularCruce();
+
+    avisar(`Consolidado leído: ${acumulado.lineas.length} líneas.`, "bueno");
+  } catch (e) {
+    avisar(e.message, "malo");
+  } finally {
+    ocupado(false);
+    pintar();
+  }
+}
+
+/**
+ * Rehace el cruce y baja al comprobante los datos de gestión de su línea.
+ *
+ * Se llama tras cada carga porque el cruce cambia con cada comprobante nuevo:
+ * una línea que estaba sin sustento deja de estarlo en cuanto aparece su
+ * boleta.
+ */
+function recalcularCruce() {
+  if (!rendicion) return (cruce = null);
+
+  cruce = cruzar(comprobantes.map((c) => c.campos ?? {}), rendicion.lineas);
+
+  for (const [iComp, p] of cruce.porComprobante) {
+    const c = comprobantes[iComp];
+    if (c?.campos) c.campos = heredar(c.campos, rendicion.lineas[p.linea]);
   }
 }
 
 // --- registro ------------------------------------------------------------
 
+function filaDeComprobante(c, enlace) {
+  const k = c.campos;
+  return [
+    new Date().toISOString(), k.fecha, k.tipo, k.serie, k.numero, k.ruc, k.proveedor,
+    k.proyecto, k.area, k.responsable, k.categoria, k.subcategoria,
+    k.clasificacion, k.descripcion,
+    k.moneda, k.subtotal, k.igv, k.importe,
+    enlace, c.origen, c.pagina, c.via, c.huella, claveDe(k), sesion()?.correo ?? "",
+  ];
+}
+
 async function registrar() {
   const listos = comprobantes.filter((c) => c.estado === "listo" && estaCompleto(c.campos));
-  if (!listos.length) {
-    avisar("No hay comprobantes completos para registrar.", "malo");
-    return;
-  }
+  if (!listos.length) return avisar("No hay comprobantes completos para registrar.", "malo");
 
-  trabajando = true;
-  actualizarBotones();
-
+  ocupado(true);
   try {
     const carpeta = await carpetaDelDia();
     const filas = [];
-    const registrados = [];
+
+    // Varios comprobantes de la misma imagen comparten archivo: se sube una
+    // sola vez y las dos filas apuntan al mismo enlace.
+    const subidos = new Map();
 
     for (const [i, c] of listos.entries()) {
       avisar(`Subiendo ${i + 1} de ${listos.length}…`, "trabajando");
 
-      const nombre = [
-        c.campos.fechaEmision || fechaCarpeta(),
-        c.campos.ruc || "sin-ruc",
-        [c.campos.serie, c.campos.numero].filter(Boolean).join("-") || c.huella.slice(0, 8),
-      ].join("_") + ".jpg";
+      if (!subidos.has(c.huella)) {
+        const nombre = [
+          c.campos.fecha || fechaCarpeta(),
+          c.campos.ruc || "sin-ruc",
+          claveDe(c.campos) || c.huella.slice(0, 8),
+        ].join("_") + ".jpg";
+        subidos.set(c.huella, (await subir(c.blob, nombre, carpeta)).webViewLink);
+      }
 
-      const archivo = await subir(c.blob, nombre, carpeta);
-
-      filas.push([
-        new Date().toISOString(), c.centro,
-        c.campos.tipo, c.campos.serie, c.campos.numero, c.campos.fechaEmision,
-        c.campos.ruc, c.campos.proveedor, c.campos.moneda,
-        c.campos.subtotal, c.campos.igv, c.campos.total,
-        archivo.webViewLink, c.origen, c.pagina, c.via, c.huella,
-        sesion()?.correo ?? "",
-      ]);
-      c.enlace = archivo.webViewLink;
-      registrados.push(c);
+      const enlace = subidos.get(c.huella);
+      filas.push(filaDeComprobante(c, enlace));
+      c.enlace = enlace;
     }
 
     // Las filas van en una sola llamada: si se cortara a mitad, es preferible
     // que no quede ninguna anotada a que queden la mitad y nadie sepa cuáles.
     await agregar(PESTANA_REGISTRO, filas);
 
-    registrados.forEach((c) => {
+    listos.forEach((c) => {
       c.estado = "registrado";
-      huellasPrevias.add(c.huella);
+      previos.huellas.add(c.huella);
+      const k = claveDe(c.campos);
+      if (k) previos.claves.add(k);
     });
     avisar(`${filas.length} comprobante${filas.length > 1 ? "s" : ""} registrado${filas.length > 1 ? "s" : ""}.`, "bueno");
   } catch (e) {
     avisar(e.message, "malo");
   } finally {
-    trabajando = false;
-    actualizarBotones();
-    renderizar();
+    ocupado(false);
+    pintar();
   }
 }
 
-// --- interfaz ------------------------------------------------------------
+async function registrarConsolidado() {
+  if (!rendicion?.lineas.length) return;
+
+  ocupado(true);
+  try {
+    const ahora = new Date().toISOString();
+    const quien = sesion()?.correo ?? "";
+    const filas = rendicion.lineas.map((l) => [
+      ahora, rendicion.caja, rendicion.administrador, l.fecha, l.tipo,
+      l.numeroCrudo || claveDe(l), l.proveedor, l.proyecto, l.area, l.responsable,
+      l.categoria, l.subcategoria, l.clasificacion, l.descripcion, l.importe,
+      claveDe(l), rendicion.origen, quien,
+    ]);
+
+    await agregar(PESTANA_CONSOLIDADO, filas);
+    avisar(`Consolidado registrado: ${filas.length} líneas.`, "bueno");
+  } catch (e) {
+    avisar(e.message, "malo");
+  } finally {
+    ocupado(false);
+  }
+}
+
+// --- tabla de comprobantes ----------------------------------------------
 
 const CAMPOS_TABLA = [
-  ["tipo", "Tipo"], ["serie", "Serie"], ["numero", "Número"],
-  ["fechaEmision", "F. emisión"], ["ruc", "RUC"], ["proveedor", "Proveedor"],
-  ["moneda", "Mon."], ["subtotal", "Subtotal"], ["igv", "IGV"], ["total", "Total"],
+  "tipo", "serie", "numero", "fecha", "ruc", "proveedor",
+  "proyecto", "responsable", "descripcion", "importe",
 ];
 
-const ETIQUETA_VIA = { ocr: "OCR", ia: "IA", parcial: "incompleto" };
+const ETIQUETA_VIA = { ocr: "OCR", ia: "IA", parcial: "incompleto", manual: "editado" };
 
-function filaDe(c) {
+function filaDe(c, i) {
   const fila = crear("tr", c.estado === "registrado" ? "registrada" : "");
 
   const celdaImg = crear("td", "mini");
-  const img = crear("img");
-  img.src = c.url;
-  img.alt = c.origen;
-  img.onclick = () => window.open(c.url, "_blank");
-  celdaImg.append(img);
-  if (c.totalPaginas > 1) celdaImg.append(crear("span", "pag", `pág. ${c.pagina}`));
-  fila.append(celdaImg);
-
-  if (c.estado === "leyendo") {
-    const td = crear("td", "leyendo", "Leyendo…");
-    td.colSpan = CAMPOS_TABLA.length + 1;
-    fila.append(td);
-    return fila;
+  if (c.indice > 0) {
+    // El segundo comprobante de una misma imagen no repite la miniatura: se
+    // marca como continuación para que se vea de un golpe que van juntos.
+    celdaImg.append(crear("span", "sigue", "↳"));
+  } else {
+    const img = crear("img");
+    img.src = c.url;
+    img.alt = c.origen;
+    img.onclick = () => window.open(c.url, "_blank");
+    celdaImg.append(img);
+    if (c.totalPaginas > 1) celdaImg.append(crear("span", "pag", `p. ${c.pagina}`));
   }
+  fila.append(celdaImg);
 
   if (c.estado === "error") {
     const td = crear("td", "malo", c.error);
@@ -227,20 +318,21 @@ function filaDe(c) {
 
   const pendientes = faltantes(c.campos);
 
-  for (const [clave, _] of CAMPOS_TABLA) {
+  for (const campo of CAMPOS_TABLA) {
     const td = crear("td");
     const entrada = crear("input");
-    entrada.value = c.campos[clave] ?? "";
+    entrada.value = c.campos[campo] ?? "";
     entrada.disabled = c.estado === "registrado";
     // Amarillo lo que hay que revisar: es el código de color de IMPOPRINT,
     // que el equipo ya asocia con «acá falta algo».
-    if (pendientes.includes(clave)) entrada.classList.add("falta");
+    if (pendientes.includes(campo)) entrada.classList.add("falta");
     entrada.oninput = () => {
-      c.campos[clave] = entrada.value;
-      if (c.via !== "manual") c.via = "manual";
-      actualizarBotones();
-      entrada.classList.toggle("falta", faltantes(c.campos).includes(clave));
+      c.campos[campo] = entrada.value;
+      c.via = "manual";
+      entrada.classList.toggle("falta", faltantes(c.campos).includes(campo));
+      pintarBotones();
     };
+    entrada.onchange = () => { recalcularCruce(); pintar(); };
     td.append(entrada);
     fila.append(td);
   }
@@ -253,29 +345,100 @@ function filaDe(c) {
     estado.append(a);
   } else {
     estado.append(crear("span", `via ${c.via}`, ETIQUETA_VIA[c.via] ?? c.via));
-    if (c.repetido) estado.append(crear("span", "repetido", "ya registrado antes"));
+    if (c.deVarios) estado.append(crear("span", "varios", "de imagen compartida"));
+    if (c.sospechaVarios) estado.append(crear("span", "alerta", "¿más de uno? sin IA no se separan"));
+    if (previos.huellas.has(c.huella)) estado.append(crear("span", "repetido", "imagen ya subida"));
+    else if (previos.claves.has(claveDe(c.campos))) estado.append(crear("span", "repetido", "comprobante ya registrado"));
+
+    const p = cruce?.porComprobante.get(i);
+    if (p) {
+      estado.append(crear("span", `cuadra ${p.como === "numero" ? "" : "flojo"}`,
+        p.como === "numero" ? "cuadra con el consolidado" : "cuadra por fecha e importe"));
+    } else if (rendicion) {
+      estado.append(crear("span", "alerta", "no está en el consolidado"));
+    }
     if (pendientes.length) estado.append(crear("span", "pendiente", "falta completar"));
   }
   fila.append(estado);
-
   return fila;
 }
 
-function renderizar() {
-  const cuerpo = $("#filas");
-  cuerpo.replaceChildren(...comprobantes.map(filaDe));
-  $("#tabla").classList.toggle("vacia", !comprobantes.length);
-  $("#vacio").hidden = comprobantes.length > 0;
-  actualizarBotones();
+// --- cuadre --------------------------------------------------------------
+
+function pintarCuadre() {
+  const caja = $("#cuadre");
+  caja.replaceChildren();
+  if (!rendicion) return (caja.hidden = true);
+  caja.hidden = false;
+
+  const r = resumen(comprobantes.map((c) => c.campos ?? {}), rendicion.lineas, cruce);
+
+  const cabecera = crear("div", "cabecera-cuadre");
+  cabecera.append(crear("h3", "", `Caja ${rendicion.caja || "—"} · ${rendicion.administrador || "—"}`));
+  cabecera.append(crear("span", "chico", rendicion.origen ?? ""));
+  caja.append(cabecera);
+
+  const cifras = crear("div", "cifras");
+  const tarjeta = (valor, etiqueta, tono = "") => {
+    const d = crear("div", `cifra ${tono}`);
+    d.append(crear("b", "", String(valor)), crear("span", "", etiqueta));
+    return d;
+  };
+  cifras.append(
+    tarjeta(`${r.sustentadas}/${r.lineas}`, "líneas sustentadas", r.sinSustento ? "" : "bien"),
+    tarjeta(r.sinSustento, "sin comprobante", r.sinSustento ? "mal" : ""),
+    tarjeta(r.noDeclarados, "no declarados", r.noDeclarados ? "ojo" : ""),
+    tarjeta(r.discrepancias, "importes que no cuadran", r.discrepancias ? "mal" : ""),
+    tarjeta(`S/ ${r.totalRendido}`, "rendido"),
+  );
+  caja.append(cifras);
+
+  if (cruce.sinSustento.length) {
+    const det = crear("details");
+    det.append(crear("summary", "", `${cruce.sinSustento.length} líneas rendidas sin comprobante`));
+    const ul = crear("ul", "lista-cuadre");
+    for (const i of cruce.sinSustento) {
+      const l = rendicion.lineas[i];
+      ul.append(crear("li", "", `${l.fecha} · ${l.numeroCrudo || "sin número"} · ${l.proveedor} · S/ ${l.importe}`));
+    }
+    det.append(ul);
+    caja.append(det);
+  }
+
+  if (cruce.discrepancias.length) {
+    const det = crear("details");
+    det.append(crear("summary", "", `${cruce.discrepancias.length} importes que no cuadran`));
+    const ul = crear("ul", "lista-cuadre");
+    for (const d of cruce.discrepancias) {
+      const l = rendicion.lineas[d.linea];
+      ul.append(crear("li", "", `${l.numeroCrudo || claveDe(l)}: rendido S/ ${d.rendido.toFixed(2)} · comprobante S/ ${d.comprobado.toFixed(2)}`));
+    }
+    det.append(ul);
+    caja.append(det);
+  }
+
+  const btn = crear("button", "sec", `Registrar las ${rendicion.lineas.length} líneas del consolidado`);
+  btn.onclick = registrarConsolidado;
+  btn.disabled = trabajando;
+  caja.append(btn);
 }
 
-function actualizarBotones() {
+// --- pintado -------------------------------------------------------------
+
+function pintar() {
+  $("#filas").replaceChildren(...comprobantes.map(filaDe));
+  $("#tabla").hidden = !comprobantes.length;
+  $("#vacio").hidden = comprobantes.length > 0;
+  pintarCuadre();
+  pintarBotones();
+}
+
+function pintarBotones() {
   const listos = comprobantes.filter((c) => c.estado === "listo" && estaCompleto(c.campos)).length;
   const btn = $("#registrar");
   btn.disabled = trabajando || !listos;
   btn.textContent = listos ? `Registrar ${listos}` : "Registrar";
   $("#limpiar").disabled = trabajando || !comprobantes.length;
-  $("#centro").disabled = trabajando;
 }
 
 // --- clave de IA ---------------------------------------------------------
@@ -283,48 +446,19 @@ function actualizarBotones() {
 function pintarClave() {
   const k = getClaveGemini();
   $("#estadoClave").textContent = k ? enmascarar(k) : "sin configurar";
-  $("#estadoClave").classList.toggle("puesta", Boolean(k));
-}
-
-function abrirClave() {
-  $("#dlgClave").showModal();
-  $("#campoClave").value = getClaveGemini();
-}
-
-async function guardarClave() {
-  const k = $("#campoClave").value.trim();
-  if (k && !pareceClaveGemini(k)) {
-    avisar("Esa no parece una clave de Gemini: deben empezar con «AIza».", "malo");
-    return;
-  }
-  setClaveGemini(k);
-  pintarClave();
-  $("#dlgClave").close();
-  avisar("Clave guardada en este navegador.", "bueno");
-}
-
-async function verificarClave() {
-  const k = $("#campoClave").value.trim();
-  if (!k) return avisar("Pega una clave primero.", "malo");
-  try {
-    avisar("Probando la clave…", "trabajando");
-    await probarClave(k);
-    avisar("La clave funciona.", "bueno");
-  } catch (e) {
-    avisar(e.message, "malo");
-  }
 }
 
 // --- arranque ------------------------------------------------------------
 
+function conectarCarga(idBoton, manejador) {
+  const entrada = $(idBoton);
+  entrada.onchange = (e) => { manejador(e.target.files); e.target.value = ""; };
+}
+
 function montar() {
-  const centro = $("#centro");
-  centro.append(...[
-    Object.assign(document.createElement("option"), { value: "", textContent: "Centro de costo…" }),
-    ...CENTROS_COSTO.map((c) => Object.assign(document.createElement("option"), { value: c, textContent: c })),
-  ]);
-  centro.value = getCentro();
-  centro.onchange = () => setCentro(centro.value);
+  const proyecto = $("#proyecto");
+  proyecto.value = getProyecto();
+  proyecto.onchange = () => setProyecto(proyecto.value.trim());
 
   $("#entrar").onclick = alEntrar;
   $("#salir").onclick = alSalir;
@@ -332,11 +466,13 @@ function montar() {
   $("#limpiar").onclick = () => {
     comprobantes.forEach((c) => URL.revokeObjectURL(c.url));
     comprobantes = [];
-    renderizar();
+    recalcularCruce();
+    pintar();
   };
 
-  $("#archivos").onchange = (e) => { recibir(e.target.files); e.target.value = ""; };
-  $("#camara").onchange = (e) => { recibir(e.target.files); e.target.value = ""; };
+  conectarCarga("#archivos", recibirComprobantes);
+  conectarCarga("#camara", recibirComprobantes);
+  conectarCarga("#consolidado", recibirConsolidado);
 
   const zona = $("#zona");
   ["dragenter", "dragover"].forEach((ev) => zona.addEventListener(ev, (e) => {
@@ -347,11 +483,33 @@ function montar() {
     e.preventDefault();
     zona.classList.remove("encima");
   }));
-  zona.addEventListener("drop", (e) => recibir(e.dataTransfer.files));
+  zona.addEventListener("drop", (e) => recibirComprobantes(e.dataTransfer.files));
 
-  $("#btnClave").onclick = abrirClave;
-  $("#guardarClave").onclick = guardarClave;
-  $("#probarClave").onclick = verificarClave;
+  $("#btnClave").onclick = () => {
+    $("#campoClave").value = getClaveGemini();
+    $("#dlgClave").showModal();
+  };
+  $("#guardarClave").onclick = () => {
+    const k = $("#campoClave").value.trim();
+    if (k && !pareceClaveGemini(k)) {
+      return avisar("Esa no parece una clave de Gemini: deben empezar con «AIza».", "malo");
+    }
+    setClaveGemini(k);
+    pintarClave();
+    $("#dlgClave").close();
+    avisar("Clave guardada en este navegador.", "bueno");
+  };
+  $("#probarClave").onclick = async () => {
+    const k = $("#campoClave").value.trim();
+    if (!k) return avisar("Pega una clave primero.", "malo");
+    try {
+      avisar("Probando la clave…", "trabajando");
+      await probarClave(k);
+      avisar("La clave funciona.", "bueno");
+    } catch (e) {
+      avisar(e.message, "malo");
+    }
+  };
   $("#borrarClave").onclick = () => {
     borrarClaveGemini();
     pintarClave();
@@ -365,7 +523,7 @@ function montar() {
   });
 
   pintarClave();
-  renderizar();
+  pintar();
 }
 
 montar();

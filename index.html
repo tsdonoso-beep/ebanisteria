@@ -38,17 +38,28 @@
 
   <section id="zona" class="solo-dentro">
     <div class="barra">
-      <select id="centro"></select>
+      <input id="proyecto" type="text" placeholder="Proyecto del lote (opcional)" list="proyectos">
+      <datalist id="proyectos">
+        <option value="TALLERES ESPECIALIZADOS - PP">
+        <option value="TALLERES EPT I Y II - PP">
+        <option value="CHINA CIVIL PAQ 2">
+        <option value="ADM">
+      </datalist>
+
       <div class="cargar">
-        <label class="boton" for="archivos">Elegir archivos</label>
+        <label class="boton" for="archivos">Comprobantes</label>
         <input id="archivos" type="file" multiple accept="image/*,application/pdf" hidden>
 
         <!-- capture abre la cámara nativa del celular. Es más fiable que
-             getUserMedia: no pelea con los permisos de iOS ni necesita HTTPS
-             propio, y en escritorio degrada a un selector de archivos. -->
-        <label class="boton sec solo-movil" for="camara">Tomar foto</label>
+             getUserMedia: no pelea con los permisos de iOS y en escritorio
+             degrada a un selector de archivos. -->
+        <label class="boton sec solo-movil" for="camara">Foto</label>
         <input id="camara" type="file" accept="image/*" capture="environment" hidden>
+
+        <label class="boton sec" for="consolidado">Consolidado</label>
+        <input id="consolidado" type="file" accept="image/*,application/pdf" hidden>
       </div>
+
       <div class="derecha">
         <button id="limpiar" class="texto" type="button">Vaciar</button>
         <button id="registrar" type="button">Registrar</button>
@@ -56,24 +67,29 @@
     </div>
 
     <p class="pista">
-      Arrastra aquí imágenes o PDF. Cada imagen y cada página de un PDF se
-      registra como un comprobante distinto.
+      Arrastra imágenes o PDF de comprobantes. Cada página es un comprobante, y
+      si una imagen trae dos boletas juntas se separan en dos filas.
+      Con <b>Consolidado</b> cargas la rendición de caja chica para cuadrarla
+      contra lo escaneado.
     </p>
+
+    <div id="cuadre" class="cuadre" hidden></div>
 
     <div id="vacio" class="vacio">
       <p>Todavía no cargaste nada.</p>
       <p class="chico">
-        El centro de costo se aplica a todo lo que cargues, así que elígelo antes.
+        El proyecto del lote se aplica a lo que cargues, pero cada fila se puede
+        cambiar. Si luego cargas el consolidado, el proyecto de cada línea manda.
       </p>
     </div>
 
-    <table id="tabla">
+    <table id="tabla" hidden>
       <thead>
         <tr>
           <th></th>
-          <th>Tipo</th><th>Serie</th><th>Número</th><th>F. emisión</th>
-          <th>RUC</th><th>Proveedor</th><th>Mon.</th>
-          <th>Subtotal</th><th>IGV</th><th>Total</th>
+          <th>Tipo</th><th>Serie</th><th>Número</th><th>Fecha</th>
+          <th>RUC</th><th>Proveedor</th><th>Proyecto</th><th>Responsable</th>
+          <th>Descripción</th><th>Importe</th>
           <th>Estado</th>
         </tr>
       </thead>
@@ -97,8 +113,9 @@
     → <i>Get API key</i>.
   </p>
   <p class="chico">
-    Sin clave la herramienta funciona igual: lee con OCR y deja incompletos los
-    comprobantes que no logre resolver, para que los termines a mano.
+    Sin clave los comprobantes se leen igual con OCR, y lo que no se resuelva
+    queda para completar a mano. Lo que sí necesita clave es el consolidado:
+    es una tabla de decenas de filas, no un comprobante.
   </p>
   <input id="campoClave" type="password" placeholder="AIza…" autocomplete="off">
   <div class="botones">

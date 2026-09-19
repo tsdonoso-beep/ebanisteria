@@ -1,33 +1,69 @@
-// Los campos de un comprobante peruano, y cómo sacarlos de un texto.
+// Los campos de un comprobante, y cómo sacarlos de un texto.
 //
 // Esta es la primera lectura: expresiones regulares sobre lo que devolvió el
 // OCR. Es gratis, instantánea y no consume cuota. Cuando no alcanza, el
 // resultado se marca incompleto y recién ahí entra la IA.
 
 export const VACIO = () => ({
-  tipo: "", serie: "", numero: "", fechaEmision: "",
-  ruc: "", proveedor: "", moneda: "PEN",
-  subtotal: "", igv: "", total: "",
+  tipo: "", serie: "", numero: "", fecha: "", ruc: "", proveedor: "",
+  proyecto: "", area: "", responsable: "",
+  categoria: "", subcategoria: "", clasificacion: "", descripcion: "",
+  moneda: "PEN", subtotal: "", igv: "", importe: "",
 });
 
 /** Campos sin los que la fila no sirve para registro contable. */
-const IMPRESCINDIBLES = ["ruc", "total", "fechaEmision"];
+const IMPRESCINDIBLES = ["fecha", "importe", "numero"];
 
-export const estaCompleto = (c) => IMPRESCINDIBLES.every((k) => String(c[k] ?? "").trim());
+export const estaCompleto = (c) => IMPRESCINDIBLES.every((k) => String(c?.[k] ?? "").trim());
 
 export const faltantes = (c) =>
-  IMPRESCINDIBLES.filter((k) => !String(c[k] ?? "").trim());
+  IMPRESCINDIBLES.filter((k) => !String(c?.[k] ?? "").trim());
 
-const numero = (s) => {
+export const numero = (s) => {
+  if (s === 0) return "0.00";
   if (!s) return "";
   // Los montos peruanos usan coma de millar y punto decimal.
-  const n = parseFloat(String(s).replace(/,/g, "").replace(/[^\d.]/g, ""));
+  const n = parseFloat(String(s).replace(/,/g, "").replace(/[^\d.-]/g, ""));
   return isNaN(n) ? "" : n.toFixed(2);
 };
 
+/**
+ * Identidad de un comprobante, para cruzarlo con la línea del consolidado.
+ *
+ * Se normaliza fuerte —sin ceros a la izquierda, sin guiones, sin mayúsculas—
+ * porque el mismo comprobante aparece escrito de formas distintas en el papel
+ * y en la rendición: F001-6384 y F001-006384 son el mismo, y 002-001175 se
+ * teclea tan fácil como 2-1175.
+ */
+export function clave(serie, num) {
+  const limpia = (v) => String(v ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "").replace(/^0+(?=.)/, "");
+  const s = limpia(serie), n = limpia(num);
+  if (!s && !n) return "";
+  return `${s}-${n}`;
+}
+
+/** La clave de un comprobante ya leído. */
+export const claveDe = (c) => clave(c.serie, c.numero);
+
+/**
+ * Parte un «N° de comprobante» escrito de corrido en serie y número.
+ *
+ * Las planillas de movilidad vienen sin guion (010010): no tienen serie, y
+ * forzarles una partición inventaría un dato.
+ */
+export function partirNumero(texto) {
+  const t = String(texto ?? "").trim();
+  const m = t.match(/^([A-Za-z0-9]{1,4})\s*[-–—]\s*(\d{1,10})$/);
+  if (m) return { serie: m[1].toUpperCase(), numero: m[2].replace(/^0+(?=\d)/, "") };
+  return { serie: "", numero: t.replace(/^0+(?=\d)/, "") };
+}
+
 /** Normaliza a ISO. Las boletas escriben la fecha de tres o cuatro formas. */
-function fechaISO(texto) {
-  const m = texto.match(/\b(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})\b/);
+export function fechaISO(texto) {
+  const t = String(texto ?? "");
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t.trim())) return t.trim();
+
+  const m = t.match(/\b(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})\b/);
   if (!m) return "";
 
   let [, d, mes, a] = m;
@@ -52,27 +88,6 @@ function tipoDe(texto, serie) {
 }
 
 /**
- * Serie y número del comprobante.
- *
- * El formato con letra —F001-6384, EB01-135, FW01-434— es solo una parte de lo
- * que circula. En los consolidados de caja chica reales aparecen también series
- * puramente numéricas (0001-003936, 002-001175), y una expresión que solo
- * buscara la letra inicial perdería alrededor de un tercio de las filas.
- */
-function serieNumero(texto) {
-  const re = /\b([A-Z]{1,2}\d{2,3}|\d{3,4})\s*[-–—]\s*(\d{1,8})\b/g;
-
-  for (const m of texto.matchAll(re)) {
-    const [, serie, numero] = m;
-    // Una fecha ISO entra en el mismo molde: 2026-09 son cuatro dígitos, guion
-    // y dos más. Se descarta por el año, que ninguna serie usa.
-    if (/^(19|20)\d{2}$/.test(serie) && numero.length <= 2) continue;
-    return { serie: serie.toUpperCase(), numero: numero.replace(/^0+(?=\d)/, "") };
-  }
-  return { serie: "", numero: "" };
-}
-
-/**
  * Razón social del emisor.
  *
  * Heurística deliberadamente conservadora: se queda con la primera línea larga
@@ -92,17 +107,57 @@ function proveedorDe(texto) {
   return "";
 }
 
+/**
+ * Serie y número del comprobante.
+ *
+ * El formato con letra —F001-6384, EB01-135, FW01-434— es solo una parte de lo
+ * que circula. En los consolidados de caja chica reales aparecen también series
+ * puramente numéricas (0001-003936, 002-001175), y una expresión que solo
+ * buscara la letra inicial perdería alrededor de un tercio de las filas.
+ */
+function serieNumero(texto) {
+  const re = /\b([A-Z]{1,2}\d{2,3}|\d{3,4})\s*[-–—]\s*(\d{1,8})\b/g;
+
+  for (const m of texto.matchAll(re)) {
+    const [, serie, num] = m;
+    // Una fecha ISO entra en el mismo molde: 2026-09 son cuatro dígitos, guion
+    // y dos más. Se descarta por el año, que ninguna serie usa.
+    if (/^(19|20)\d{2}$/.test(serie) && num.length <= 2) continue;
+    return { serie: serie.toUpperCase(), numero: num.replace(/^0+(?=\d)/, "") };
+  }
+  return { serie: "", numero: "" };
+}
+
+/**
+ * Señales de que la imagen trae más de un comprobante.
+ *
+ * El OCR no sabe separar dos boletas puestas juntas en el cristal: devuelve un
+ * único texto con los dos encima. Dos RUC distintos, o dos números de
+ * comprobante distintos, delatan el caso — y entonces la lectura pasa a la IA,
+ * que sí puede repartirlos.
+ */
+export function pareceVarios(texto) {
+  const rucs = new Set((texto.match(/\b(?:10|15|17|20)\d{9}\b/g) ?? []));
+  if (rucs.size > 1) return true;
+
+  const numeros = new Set(
+    [...texto.matchAll(/\b(?:[A-Z]{1,2}\d{2,3}|\d{3,4})\s*[-–—]\s*\d{1,8}\b/g)]
+      .map((m) => m[0].replace(/\s/g, ""))
+      .filter((s) => !/^(19|20)\d{2}-\d{1,2}$/.test(s))
+  );
+  return numeros.size > 1;
+}
+
 /** Primera lectura: solo expresiones regulares sobre el texto del OCR. */
 export function leerTexto(texto) {
   const c = VACIO();
-  const plano = texto.replace(/ /g, " ");
+  const plano = String(texto ?? "").replace(/ /g, " ");
 
   // Los RUC peruanos empiezan en 10, 15, 17 o 20 y tienen once dígitos.
   c.ruc = plano.match(/\b((?:10|15|17|20)\d{9})\b/)?.[1] ?? "";
 
   Object.assign(c, serieNumero(plano));
-
-  c.fechaEmision = fechaISO(plano);
+  c.fecha = fechaISO(plano);
   c.tipo = tipoDe(plano, c.serie);
   c.proveedor = proveedorDe(plano);
 
@@ -110,20 +165,40 @@ export function leerTexto(texto) {
   // el primero es el que se paga de verdad.
   const total = plano.match(/TOTAL\s*A\s*PAGAR\s*:?\s*(?:S\/|US\$|\$)?\s*([\d,]+\.\d{2})/i)
              ?? plano.match(/\bTOTAL\s*:?\s*(?:S\/|US\$|\$)?\s*([\d,]+\.\d{2})/i);
-  c.total = numero(total?.[1]);
+  c.importe = numero(total?.[1]);
 
   c.igv = numero(plano.match(/\bIGV\b[^\d]{0,12}([\d,]+\.\d{2})/i)?.[1]);
   c.subtotal = numero(
     plano.match(/(?:SUB\s*TOTAL|OP\.?\s*GRAVAD[AO]S?)\s*:?\s*(?:S\/|\$)?\s*([\d,]+\.\d{2})/i)?.[1]
   );
 
-  // Si falta el subtotal pero están total e IGV, sale de restar. Es aritmética,
-  // no adivinanza, y ahorra una llamada a la IA.
-  if (!c.subtotal && c.total && c.igv) {
-    c.subtotal = (Number(c.total) - Number(c.igv)).toFixed(2);
+  // Si falta el subtotal pero están el importe y el IGV, sale de restar. Es
+  // aritmética, no adivinanza, y ahorra una llamada a la IA.
+  if (!c.subtotal && c.importe && c.igv) {
+    c.subtotal = (Number(c.importe) - Number(c.igv)).toFixed(2);
   }
 
   c.moneda = /\b(US\$|USD|D[OÓ]LARES)\b/i.test(plano) ? "USD" : "PEN";
+  return c;
+}
+
+/** Normaliza lo que devolvió la IA a la forma interna. */
+export function desdeIA(obj) {
+  const c = VACIO();
+  if (!obj) return c;
+
+  for (const k of Object.keys(c)) {
+    const v = obj[k];
+    if (v != null && String(v).trim()) c[k] = String(v).trim();
+  }
+  // La IA puede devolver el número entero en vez de partido.
+  if (!c.serie && /[-–—]/.test(c.numero)) Object.assign(c, partirNumero(c.numero));
+
+  c.fecha = fechaISO(c.fecha || obj.fechaEmision);
+  c.importe = numero(c.importe || obj.total);
+  c.igv = numero(c.igv);
+  c.subtotal = numero(c.subtotal);
+  c.moneda = c.moneda === "USD" ? "USD" : "PEN";
   return c;
 }
 
@@ -134,8 +209,5 @@ export function fundir(base, nuevos) {
     const valor = String(v ?? "").trim();
     if (valor && !String(salida[k] ?? "").trim()) salida[k] = valor;
   }
-  if (salida.total) salida.total = numero(salida.total);
-  if (salida.igv) salida.igv = numero(salida.igv);
-  if (salida.subtotal) salida.subtotal = numero(salida.subtotal);
   return salida;
 }

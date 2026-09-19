@@ -19,10 +19,38 @@ Estado: **validando la arquitectura**. Todavía no hay aplicación.
 | Backend | Ninguno | Sin servidor no hay clave privada que custodiar ni costo que justificar |
 | Identidad | Google Identity Services, cuenta `@inroprin.com` | La app escribe como la persona, no como una cuenta de servicio |
 | Almacenamiento | Drive (unidad compartida) + Sheets | Sin base de datos: el Sheet es el registro |
-| Carpetas | Solo por fecha — `/InroScan/2026/09/19/` | Reconfigurar la taxonomía después será cambiar una columna, no mover archivos |
-| Centro de costos | Columna del Sheet, asignada al lanzar el lote | Si va en la ruta, cambiarlo obliga a migrar Drive |
-| Unidad de registro | Una fila por imagen, o por página de PDF | 12 páginas son 12 comprobantes |
+| Carpetas | Planas por día — `2026-09-19` | Una consulta al registro de carpetas en vez de tres |
+| Unidad de registro | Un comprobante, no un archivo | Una imagen puede traer dos boletas; un PDF de 12 páginas son 12 |
+| Vocabulario | El del consolidado real | Proyecto, área, responsable, categoría, subcategoría, clasificación |
+| Proyecto | Por lote, editable por fila, y el consolidado manda | Una misma caja mezcla cuatro proyectos |
 | Clave de IA | Por persona, en `localStorage` | Puente mientras se mide el volumen; el destino es un pool en servidor |
+
+### El cuadre contra el consolidado
+
+Digitalizar por sí solo no convence: el consolidado de caja chica ya existe y se
+arma a mano. Lo que no existe es la respuesta a *«de estas 54 líneas, ¿cuáles
+tienen comprobante?»*.
+
+La herramienta lee la rendición y la cruza contra lo escaneado en dos pasadas.
+Primero por número de comprobante, que es identidad de verdad: si coincide es el
+mismo documento aunque el importe esté mal tecleado, y la comparación normaliza
+ceros y guiones porque `F001-6384` y `F001-006384` son el mismo papel. Lo que
+queda suelto se intenta por fecha e importe, que es una coincidencia plausible y
+no una prueba — por eso se marca aparte en lugar de darse por buena.
+
+De ahí salen cuatro números: líneas sustentadas, líneas sin comprobante,
+comprobantes que nadie declaró, e importes que no cuadran.
+
+Como efecto secundario resuelve algo que el papel no puede: un comprobante
+impreso no dice a qué proyecto se cargó ni quién lo pidió. Eso solo vive en la
+rendición, así que cuando el cruce los une esos campos bajan solos al registro.
+
+### Series de comprobante
+
+El formato con letra es solo una parte de lo que circula. En un consolidado real
+convivían `F001-6384`, `EB01-135`, `FW01-434`, `F018-00001185` y series
+puramente numéricas como `0001-003936` y `002-001175`. Una expresión que solo
+buscara la letra inicial perdía alrededor de un tercio de las filas, en silencio.
 
 ### Por qué la carpeta va solo por fecha
 

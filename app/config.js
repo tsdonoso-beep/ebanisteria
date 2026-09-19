@@ -15,8 +15,8 @@ export const CARPETA_RAIZ = "1luJMlROtAYYurXcnaAw3K8TURC_4qKBK";
 /** Hoja de registro. */
 export const HOJA = "1aRzq1ShOW6bD4MYZGNR0FuPcMewG2BVHbO2Qpc36o9E";
 
-/** Pestaña donde se acumulan los comprobantes registrados. */
 export const PESTANA_REGISTRO = "Registro";
+export const PESTANA_CONSOLIDADO = "Consolidados";
 
 /**
  * Pestaña que mapea fecha → ID de la carpeta de ese día.
@@ -32,43 +32,55 @@ export const PESTANA_CARPETAS = "Carpetas";
 
 export const GEMINI_MODELO = "gemini-3.1-flash-lite-preview";
 
-/** Columnas del registro, en orden. El encabezado se siembra solo. */
+/**
+ * Columnas del registro.
+ *
+ * El vocabulario sale del consolidado de caja chica real, no de una invención
+ * nuestra: proyecto, área, responsable, categoría, subcategoría y
+ * clasificación son las columnas que contabilidad ya usa. Un registro que
+ * hable otro idioma obliga a traducir a mano y no le sirve a nadie.
+ */
 export const COLUMNAS = [
-  "Extraído", "Centro de costo", "Tipo", "Serie", "Número", "Fecha emisión",
-  "RUC", "Proveedor", "Moneda", "Subtotal", "IGV", "Total",
-  "Archivo", "Origen", "Página", "Leído con", "Huella", "Registró",
+  "Extraído", "Fecha", "Tipo", "Serie", "Número", "RUC", "Proveedor",
+  "Proyecto", "Área", "Responsable", "Categoría", "Subcategoría",
+  "Clasificación", "Descripción",
+  "Moneda", "Subtotal", "IGV", "Importe",
+  "Archivo", "Origen", "Página", "Leído con", "Huella", "Clave", "Registró",
 ];
 
-/**
- * Centros de costo. Se elige uno al lanzar el lote y se aplica a todo el lote.
- *
- * Provisional: mientras la herramienta gana confianza esta lista se edita acá.
- * Cuando el uso lo justifique, pasará a leerse de una pestaña de la hoja para
- * que contabilidad la mantenga sin tocar el código.
- */
-export const CENTROS_COSTO = [
-  "Administración",
-  "Almacén",
-  "Contabilidad",
-  "Logística",
-  "Mantenimiento",
-  "Obra",
-  "Postventa",
-  "Taller",
-  "Tesorería",
+/** Columnas de la pestaña de consolidados, una fila por línea rendida. */
+export const COLUMNAS_CONSOLIDADO = [
+  "Leído", "Caja", "Administrador", "Fecha", "Tipo", "N° comprobante",
+  "Proveedor", "Proyecto", "Área", "Responsable", "Categoría", "Subcategoría",
+  "Clasificación", "Descripción", "Importe", "Clave", "Origen", "Registró",
+];
+
+/** Campos que se heredan del consolidado al comprobante cuando cuadran. */
+export const HEREDABLES = [
+  "proyecto", "area", "responsable", "categoria", "subcategoria",
+  "clasificacion", "descripcion",
 ];
 
 // --- preferencias por navegador -----------------------------------------
 
 const CLAVE_GEMINI = "inroscan_gemini_key";
-const CLAVE_CENTRO = "inroscan_centro";
+const CLAVE_PROYECTO = "inroscan_proyecto";
 
 export const getClaveGemini = () => localStorage.getItem(CLAVE_GEMINI) ?? "";
 export const setClaveGemini = (k) => localStorage.setItem(CLAVE_GEMINI, k);
 export const borrarClaveGemini = () => localStorage.removeItem(CLAVE_GEMINI);
 
-export const getCentro = () => localStorage.getItem(CLAVE_CENTRO) ?? "";
-export const setCentro = (c) => localStorage.setItem(CLAVE_CENTRO, c);
+/**
+ * Proyecto por defecto del lote.
+ *
+ * Se elige al cargar y se aplica a todo lo que entre, pero cada fila se puede
+ * cambiar: el consolidado real mezcla cuatro proyectos en una misma caja, así
+ * que fijarlo por lote y no dejarlo editar obligaría a subir en tandas.
+ * Cuando un comprobante cuadra con una línea del consolidado, el proyecto de
+ * esa línea manda sobre este.
+ */
+export const getProyecto = () => localStorage.getItem(CLAVE_PROYECTO) ?? "";
+export const setProyecto = (p) => localStorage.setItem(CLAVE_PROYECTO, p);
 
 /** Las claves de Gemini empiezan con AIza. Otras credenciales de Google no
  *  sirven acá, y el error que devuelve la API no lo explica. */

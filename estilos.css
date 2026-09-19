@@ -195,3 +195,55 @@ dialog a { color: var(--teal); }
   #tabla { display: block; overflow-x: auto; white-space: nowrap; }
   td input { min-width: 84px; }
 }
+
+/* --- cuadre contra el consolidado --- */
+
+.cuadre {
+  margin-top: 18px; padding: 18px 20px;
+  border: 1px solid var(--linea); border-radius: var(--radio);
+  background: #f7fafb;
+}
+.cabecera-cuadre {
+  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.cabecera-cuadre h3 { font-size: 15px; margin: 0; }
+
+.cifras { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.cifra {
+  background: var(--papel); border: 1px solid var(--linea); border-radius: 9px;
+  padding: 9px 14px; min-width: 116px;
+}
+.cifra b { display: block; font-size: 19px; font-weight: 800; letter-spacing: -.4px; }
+.cifra span { font-size: 11.5px; color: var(--tenue); }
+.cifra.bien b { color: var(--teal); }
+.cifra.mal  b { color: var(--rojo); }
+.cifra.ojo  b { color: var(--ambar); }
+
+.cuadre details { margin-bottom: 10px; }
+.cuadre summary {
+  cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--suave);
+  padding: 4px 0;
+}
+.lista-cuadre {
+  margin: 6px 0 0; padding-left: 20px;
+  font-size: 13px; color: var(--suave); max-height: 220px; overflow: auto;
+}
+.lista-cuadre li { padding: 2px 0; }
+
+/* --- marcas de estado nuevas --- */
+
+.alerta  { background: var(--ambar-claro); color: var(--ambar); }
+.varios  { background: #e6e9f7; color: #3a4694; }
+.cuadra  { background: var(--teal-claro); color: #0b5f56; }
+.cuadra.flojo { background: var(--ambar-claro); color: var(--ambar); }
+
+td.mini .sigue { color: var(--tenue); font-size: 17px; }
+
+#proyecto {
+  padding: 9px 12px; border: 1px solid var(--linea); border-radius: 8px;
+  font: inherit; font-size: 14px; min-width: 230px;
+}
+
+body.ocupado { cursor: progress; }
+body.ocupado button:not(.texto) { opacity: .5; pointer-events: none; }

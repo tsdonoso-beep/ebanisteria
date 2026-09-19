@@ -4,7 +4,10 @@
 // como cualquier otra. Eso impone dos cuidados —crear las pestañas si faltan y
 // no pisar filas ajenas al escribir— que es lo que resuelve este módulo.
 
-import { HOJA, PESTANA_REGISTRO, PESTANA_CARPETAS, COLUMNAS } from "./config.js";
+import {
+  HOJA, PESTANA_REGISTRO, PESTANA_CARPETAS, PESTANA_CONSOLIDADO,
+  COLUMNAS, COLUMNAS_CONSOLIDADO,
+} from "./config.js";
 import { cabeceras, motivo } from "./auth.js";
 
 const API = `https://sheets.googleapis.com/v4/spreadsheets/${HOJA}`;
@@ -40,14 +43,15 @@ async function crearPestana(titulo) {
 export async function preparar() {
   const existentes = await pestanas();
 
-  if (!existentes.includes(PESTANA_REGISTRO)) {
-    await crearPestana(PESTANA_REGISTRO);
-    await escribir(`${PESTANA_REGISTRO}!A1`, [COLUMNAS]);
-  }
-  if (!existentes.includes(PESTANA_CARPETAS)) {
-    await crearPestana(PESTANA_CARPETAS);
-    await escribir(`${PESTANA_CARPETAS}!A1`, [["Fecha", "ID de carpeta", "Creada por", "Creada el"]]);
-  }
+  const sembrar = async (titulo, encabezado) => {
+    if (existentes.includes(titulo)) return;
+    await crearPestana(titulo);
+    await escribir(`${titulo}!A1`, [encabezado]);
+  };
+
+  await sembrar(PESTANA_REGISTRO, COLUMNAS);
+  await sembrar(PESTANA_CONSOLIDADO, COLUMNAS_CONSOLIDADO);
+  await sembrar(PESTANA_CARPETAS, ["Fecha", "ID de carpeta", "Creada por", "Creada el"]);
 }
 
 function escribir(rango, filas) {
@@ -83,9 +87,22 @@ function letraColumna(i) {
   return s;
 }
 
-/** Las huellas ya registradas, para avisar de un comprobante repetido. */
-export async function huellasRegistradas() {
-  const letra = letraColumna(COLUMNAS.indexOf("Huella"));
-  const filas = await leer(`${PESTANA_REGISTRO}!${letra}2:${letra}`);
-  return new Set(filas.flat().filter(Boolean));
+/**
+ * Lo ya registrado, para avisar antes de duplicar.
+ *
+ * Se guardan dos identidades porque cazan casos distintos: la huella es del
+ * archivo y detecta la misma imagen subida dos veces; la clave es del
+ * comprobante y detecta la misma boleta escaneada de nuevo, torcida o desde
+ * otro ángulo, que es el caso que de verdad pasa.
+ */
+export async function yaRegistrado() {
+  const col = (nombre) => letraColumna(COLUMNAS.indexOf(nombre));
+  const [huellas, claves] = await Promise.all([
+    leer(`${PESTANA_REGISTRO}!${col("Huella")}2:${col("Huella")}`),
+    leer(`${PESTANA_REGISTRO}!${col("Clave")}2:${col("Clave")}`),
+  ]);
+  return {
+    huellas: new Set(huellas.flat().filter(Boolean)),
+    claves: new Set(claves.flat().filter(Boolean)),
+  };
 }
