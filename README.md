@@ -72,20 +72,30 @@ Una sola vez, con permisos de administrador del Workspace.
 
 ---
 
-## La prueba pendiente
+## El veredicto de la prueba
 
-Antes de construir la aplicación hay una duda que decide el diseño de toda la
-pantalla de carga:
+La duda era si `drive.file` alcanzaba para escribir en una carpeta que la app no
+creó, o si cada persona tendría que elegirla con Google Picker. Son dos
+interfaces de carga distintas y construir la equivocada cuesta rehacerla.
 
-> ¿`drive.file` alcanza para escribir en una carpeta que la app no creó, usando
-> solo su ID? ¿O hay que hacer que la persona la elija con Google Picker?
+**Probado el 19 de setiembre de 2026 contra la unidad compartida real: sí
+alcanza con el ID directo.** No hace falta Picker ni API Key.
 
-Si alcanza con el ID, la carga es directa. Si no, cada persona tendrá que elegir
-la carpeta una primera vez y habrá que recordar esa elección. Son dos interfaces
-distintas, y construir la equivocada cuesta rehacerla.
+El motivo es que `drive.file` limita el acceso a los archivos que la app *crea o
+abre*. Un archivo nuevo con `parents: [carpeta]` es creado por la app, así que
+entra en el alcance; la carpeta solo tiene que ser accesible para la persona que
+entró. Lo que el alcance niega es leer o modificar archivos preexistentes que la
+app nunca tocó, y eso la herramienta no lo necesita.
 
-`spike/index.html` responde eso. Es una página autocontenida, sin dependencias
-ni compilación.
+**Consecuencias de diseño:**
+
+- La carga es directa: se sube a la carpeta configurada, sin paso de selección.
+- No hay API Key en el proyecto — era solo para Picker.
+- La configuración se reduce a un Client ID, un ID de carpeta y un ID de hoja.
+
+`spike/index.html` es la página que lo probó, autocontenida y sin compilación.
+Se conserva como banco de pruebas: sirve para verificar credenciales nuevas o
+diagnosticar un fallo de permisos sin levantar la aplicación entera.
 
 ```bash
 python3 -m http.server 8000 --directory spike
