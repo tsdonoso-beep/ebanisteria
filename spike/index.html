@@ -137,6 +137,12 @@
 <script src="https://apps.google.com/lib/api.js" async defer></script>
 <script>
 const CAMPOS = ["cfgClient", "cfgApiKey", "cfgCarpeta", "cfgHoja"];
+
+// Client ID del proyecto inroscan-contabilidad. No es secreto: en una app
+// estática viaja visible de todos modos. Lo que restringe el acceso es la
+// pantalla de consentimiento en modo Internal y los permisos de la carpeta.
+const CLIENT_ID_POR_DEFECTO =
+  "951030676058-igp95ct69p03lcpt02vtjs79t5dmsrij.apps.googleusercontent.com";
 const ALCANCES = [
   "https://www.googleapis.com/auth/drive.file",
   "https://www.googleapis.com/auth/spreadsheets",
@@ -152,6 +158,11 @@ CAMPOS.forEach(id => {
   const v = localStorage.getItem(id);
   if (v) document.getElementById(id).value = v;
 });
+
+// Lo escrito a mano manda; el valor por defecto solo rellena el hueco.
+if (!document.getElementById("cfgClient").value) {
+  document.getElementById("cfgClient").value = CLIENT_ID_POR_DEFECTO;
+}
 
 function cfg(id) { return document.getElementById(id).value.trim(); }
 
