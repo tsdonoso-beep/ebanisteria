@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>InroScan · Contabilidad</title>
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+
+<header>
+  <div class="marca">
+    <h1>InroScan</h1>
+    <span class="area">Contabilidad</span>
+  </div>
+  <div class="acciones">
+    <button id="btnClave" class="llave" type="button">
+      Clave IA · <span id="estadoClave">sin configurar</span>
+    </button>
+    <span id="quien"></span>
+    <button id="salir" class="texto solo-dentro" type="button">Salir</button>
+  </div>
+</header>
+
+<div id="aviso" class="aviso"></div>
+
+<main>
+
+  <section id="puerta" class="solo-fuera">
+    <h2>Entra con tu cuenta de inroprin.com</h2>
+    <p>
+      Los comprobantes se guardan en la unidad compartida y el registro queda en
+      la hoja de cálculo del área. La herramienta escribe con tu cuenta, así que
+      cada fila lleva el rastro de quién la registró.
+    </p>
+    <button id="entrar" type="button">Entrar con Google</button>
+  </section>
+
+  <section id="zona" class="solo-dentro">
+    <div class="barra">
+      <select id="centro"></select>
+      <div class="cargar">
+        <label class="boton" for="archivos">Elegir archivos</label>
+        <input id="archivos" type="file" multiple accept="image/*,application/pdf" hidden>
+
+        <!-- capture abre la cámara nativa del celular. Es más fiable que
+             getUserMedia: no pelea con los permisos de iOS ni necesita HTTPS
+             propio, y en escritorio degrada a un selector de archivos. -->
+        <label class="boton sec solo-movil" for="camara">Tomar foto</label>
+        <input id="camara" type="file" accept="image/*" capture="environment" hidden>
+      </div>
+      <div class="derecha">
+        <button id="limpiar" class="texto" type="button">Vaciar</button>
+        <button id="registrar" type="button">Registrar</button>
+      </div>
+    </div>
+
+    <p class="pista">
+      Arrastra aquí imágenes o PDF. Cada imagen y cada página de un PDF se
+      registra como un comprobante distinto.
+    </p>
+
+    <div id="vacio" class="vacio">
+      <p>Todavía no cargaste nada.</p>
+      <p class="chico">
+        El centro de costo se aplica a todo lo que cargues, así que elígelo antes.
+      </p>
+    </div>
+
+    <table id="tabla">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Tipo</th><th>Serie</th><th>Número</th><th>F. emisión</th>
+          <th>RUC</th><th>Proveedor</th><th>Mon.</th>
+          <th>Subtotal</th><th>IGV</th><th>Total</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody id="filas"></tbody>
+    </table>
+
+    <p class="nota">
+      Revisa antes de registrar: lo amarillo es lo que no se pudo leer. Nada se
+      guarda hasta que aprietes <b>Registrar</b>.
+    </p>
+  </section>
+
+</main>
+
+<dialog id="dlgClave">
+  <h2>Clave de Gemini</h2>
+  <p>
+    Cada persona usa la suya, para consumir su propio límite diario. Se guarda
+    solo en este navegador. La consigues en
+    <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com</a>
+    → <i>Get API key</i>.
+  </p>
+  <p class="chico">
+    Sin clave la herramienta funciona igual: lee con OCR y deja incompletos los
+    comprobantes que no logre resolver, para que los termines a mano.
+  </p>
+  <input id="campoClave" type="password" placeholder="AIza…" autocomplete="off">
+  <div class="botones">
+    <button id="guardarClave" type="button">Guardar</button>
+    <button id="probarClave" class="sec" type="button">Probar</button>
+    <button id="borrarClave" class="texto malo" type="button">Borrar</button>
+    <button class="texto" type="button" onclick="document.getElementById('dlgClave').close()">Cerrar</button>
+  </div>
+</dialog>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+<script type="module" src="app/main.js"></script>
+</body>
+</html>
