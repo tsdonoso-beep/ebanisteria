@@ -143,6 +143,14 @@ const CAMPOS = ["cfgClient", "cfgApiKey", "cfgCarpeta", "cfgHoja"];
 // pantalla de consentimiento en modo Internal y los permisos de la carpeta.
 const CLIENT_ID_POR_DEFECTO =
   "951030676058-igp95ct69p03lcpt02vtjs79t5dmsrij.apps.googleusercontent.com";
+
+/** Hoja «INROSCAN · REGISTRO». */
+const HOJA_POR_DEFECTO = "1aRzq1ShOW6bD4MYZGNR0FuPcMewG2BVHbO2Qpc36o9E";
+
+// El ID de la carpeta se pega a mano, copiado de la barra de direcciones.
+// No conviene transcribirlo de una captura: Drive responde 404 tanto para
+// «no autorizado» como para «no existe», así que un carácter mal copiado se
+// vería igual que el límite de drive.file — que es justo lo que se mide acá.
 const ALCANCES = [
   "https://www.googleapis.com/auth/drive.file",
   "https://www.googleapis.com/auth/spreadsheets",
@@ -160,8 +168,10 @@ CAMPOS.forEach(id => {
 });
 
 // Lo escrito a mano manda; el valor por defecto solo rellena el hueco.
-if (!document.getElementById("cfgClient").value) {
-  document.getElementById("cfgClient").value = CLIENT_ID_POR_DEFECTO;
+const PREDETERMINADOS = { cfgClient: CLIENT_ID_POR_DEFECTO, cfgHoja: HOJA_POR_DEFECTO };
+for (const [id, valor] of Object.entries(PREDETERMINADOS)) {
+  const campo = document.getElementById(id);
+  if (!campo.value) campo.value = valor;
 }
 
 function cfg(id) { return document.getElementById(id).value.trim(); }
