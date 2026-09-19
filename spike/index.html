@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>InroScan · Prueba OAuth</title>
+<style>
+  :root {
+    --tinta: #16222c;
+    --suave: #5b6b76;
+    --linea: #dde4e8;
+    --fondo: #eef2f4;
+    --papel: #fff;
+    --teal: #0f8a7e;
+    --ambar: #b4741c;
+    --rojo: #b3261e;
+    --radio: 12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 16px;
+    background: var(--fondo); color: var(--tinta);
+    font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 30px; font-weight: 800; letter-spacing: -.5px; margin: 0 0 4px; }
+  .sub { color: var(--suave); margin: 0 0 28px; }
+  section {
+    background: var(--papel); border: 1px solid var(--linea);
+    border-radius: var(--radio); padding: 20px 22px; margin-bottom: 16px;
+  }
+  h2 { font-size: 16px; font-weight: 700; margin: 0 0 14px; display: flex; align-items: center; gap: 9px; }
+  .n {
+    width: 22px; height: 22px; border-radius: 50%; background: var(--teal); color: #fff;
+    font-size: 12px; font-weight: 700; display: grid; place-items: center; flex: none;
+  }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 12px 0 5px; }
+  label small { font-weight: 400; color: var(--suave); }
+  input {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--linea);
+    border-radius: 7px; font: inherit; font-size: 14px; background: #fbfcfd;
+  }
+  input:focus { outline: 2px solid var(--teal); outline-offset: -1px; background: #fff; }
+  button {
+    padding: 9px 16px; border-radius: 7px; border: 1px solid var(--teal);
+    background: var(--teal); color: #fff; font: inherit; font-weight: 600;
+    cursor: pointer; margin: 14px 8px 0 0;
+  }
+  button.sec { background: #fff; color: var(--teal); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .quien { margin-top: 14px; font-size: 14px; }
+  .pill {
+    display: inline-block; padding: 2px 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 700; margin-left: 6px;
+  }
+  .ok  { background: #dcf1ec; color: #0b5f56; }
+  .mal { background: #fbe2e0; color: var(--rojo); }
+  .nota {
+    border-left: 3px solid var(--ambar); padding: 10px 14px; margin-top: 16px;
+    background: #fdf8f0; font-size: 13.5px; border-radius: 0 7px 7px 0;
+  }
+  #log {
+    background: #10181e; color: #c8d6dd; border-radius: var(--radio);
+    padding: 16px 18px; font: 12.5px/1.65 ui-monospace, "SF Mono", Menlo, monospace;
+    white-space: pre-wrap; word-break: break-word; min-height: 90px; max-height: 420px;
+    overflow: auto; margin: 0;
+  }
+  #log .v { color: #6fd3bb; }
+  #log .x { color: #f2938c; }
+  #log .i { color: #7f95a3; }
+  a { color: var(--teal); }
+</style>
+</head>
+<body>
+<main>
+  <h1>InroScan · Prueba OAuth</h1>
+  <p class="sub">
+    Valida que el navegador pueda escribir en Drive y Sheets con la cuenta de quien entra,
+    sin servidor. Responde la duda abierta: si <code>drive.file</code> alcanza para una
+    carpeta preexistente, o hace falta Picker.
+  </p>
+
+  <section>
+    <h2><span class="n">1</span> Configuración</h2>
+    <label>Client ID <small>— OAuth 2.0, tipo «Aplicación web», del proyecto de Google Cloud</small></label>
+    <input id="cfgClient" placeholder="000000000000-xxxxxxxx.apps.googleusercontent.com">
+
+    <label>API Key <small>— solo para el Picker de la prueba 2B</small></label>
+    <input id="cfgApiKey" placeholder="AIza...">
+
+    <label>ID de la carpeta de Drive <small>— de la URL: drive/folders/<b>ESTO</b></small></label>
+    <input id="cfgCarpeta" placeholder="1AbC...">
+
+    <label>ID de la hoja de cálculo <small>— de la URL: spreadsheets/d/<b>ESTO</b>/edit</small></label>
+    <input id="cfgHoja" placeholder="1XyZ...">
+
+    <div class="nota">
+      Se guardan solo en este navegador (<code>localStorage</code>). Ninguno es secreto:
+      el Client ID y la API Key van visibles en cualquier app estática. Lo que protege
+      de verdad es a quién le compartiste la carpeta y la hoja.
+    </div>
+    <button onclick="guardar()">Guardar</button>
+  </section>
+
+  <section>
+    <h2><span class="n">2</span> Entrar con Google</h2>
+    <p style="margin:0;color:var(--suave);font-size:14px">
+      Pide permiso de <code>drive.file</code> y <code>spreadsheets</code>. La app actúa
+      como la persona que entra, no como una cuenta de servicio.
+    </p>
+    <button id="btnEntrar" onclick="entrar()">Entrar</button>
+    <div class="quien" id="quien"></div>
+  </section>
+
+  <section>
+    <h2><span class="n">3</span> Las pruebas</h2>
+    <p style="margin:0 0 4px;font-size:14px">
+      <b>2A</b> — Subir un archivo a la carpeta usando su ID directamente.
+      Es el camino cómodo: si funciona, no hace falta Picker.
+    </p>
+    <p style="margin:0;font-size:14px;color:var(--suave)">
+      <b>2B</b> — Si 2A falla con 404, elegir la carpeta con Picker y reintentar.
+      Un 404 acá significa «no autorizado», no «no existe».
+    </p>
+    <button id="btn2a" onclick="prueba2A()" disabled>Probar 2A · ID directo</button>
+    <button id="btn2b" class="sec" onclick="prueba2B()" disabled>Probar 2B · Picker</button>
+    <button id="btn3" class="sec" onclick="prueba3()" disabled>Probar 3 · Fila en Sheets</button>
+  </section>
+
+  <section>
+    <h2><span class="n">4</span> Resultado</h2>
+    <pre id="log"><span class="i">Esperando…</span></pre>
+  </section>
+</main>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://apps.google.com/lib/api.js" async defer></script>
+<script>
+const CAMPOS = ["cfgClient", "cfgApiKey", "cfgCarpeta", "cfgHoja"];
+const ALCANCES = [
+  "https://www.googleapis.com/auth/drive.file",
+  "https://www.googleapis.com/auth/spreadsheets",
+  "openid", "email",
+].join(" ");
+
+let token = null;
+let carpetaElegida = null;
+
+// --- configuración -------------------------------------------------------
+
+CAMPOS.forEach(id => {
+  const v = localStorage.getItem(id);
+  if (v) document.getElementById(id).value = v;
+});
+
+function cfg(id) { return document.getElementById(id).value.trim(); }
+
+function guardar() {
+  CAMPOS.forEach(id => localStorage.setItem(id, cfg(id)));
+  log("Configuración guardada en este navegador.", "v");
+}
+
+// --- registro ------------------------------------------------------------
+
+function log(texto, clase = "") {
+  const pre = document.getElementById("log");
+  if (pre.querySelector(".i")) pre.textContent = "";
+  const hora = new Date().toLocaleTimeString("es-PE", { hour12: false });
+  const linea = document.createElement("span");
+  if (clase) linea.className = clase;
+  linea.textContent = `[${hora}] ${texto}\n`;
+  pre.appendChild(linea);
+  pre.scrollTop = pre.scrollHeight;
+}
+
+/** Muestra el cuerpo del error, que es donde Google explica el motivo real. */
+async function detallar(r) {
+  const cuerpo = await r.text();
+  try {
+    const j = JSON.parse(cuerpo);
+    return j.error?.message ?? cuerpo;
+  } catch {
+    return cuerpo.slice(0, 400);
+  }
+}
+
+// --- entrar --------------------------------------------------------------
+
+function entrar() {
+  if (!cfg("cfgClient")) return log("Falta el Client ID.", "x");
+  guardar();
+
+  const cliente = google.accounts.oauth2.initTokenClient({
+    client_id: cfg("cfgClient"),
+    scope: ALCANCES,
+    // Sugerencia de dominio para la pantalla de Google. NO es un control de
+    // acceso: una app estática no puede imponerlo. Lo que sí restringe de
+    // verdad es la pantalla de consentimiento en modo «Internal» y los
+    // permisos de la carpeta y la hoja.
+    hd: "inroprin.com",
+    callback: async (resp) => {
+      if (resp.error) return log(`Error al entrar: ${resp.error}`, "x");
+      token = resp.access_token;
+      log("Token obtenido.", "v");
+      await mostrarQuien();
+      ["btn2a", "btn2b", "btn3"].forEach(b => document.getElementById(b).disabled = false);
+    },
+  });
+  cliente.requestAccessToken();
+}
+
+async function mostrarQuien() {
+  const r = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!r.ok) return log(`No se pudo leer el perfil: ${await detallar(r)}`, "x");
+
+  const { email } = await r.json();
+  const delDominio = email.endsWith("@inroprin.com");
+  document.getElementById("quien").innerHTML =
+    `Sesión: <b>${email}</b><span class="pill ${delDominio ? "ok" : "mal"}">` +
+    `${delDominio ? "inroprin.com" : "dominio externo"}</span>`;
+  log(`Entró ${email}`, delDominio ? "v" : "x");
+  if (!delDominio) {
+    log("Aviso: esta cuenta es de otro dominio. Si la carpeta está compartida " +
+        "solo con inroprin.com, las pruebas van a fallar — que es lo correcto.", "x");
+  }
+}
+
+// --- prueba 2A: ID directo ----------------------------------------------
+
+async function subir(idCarpeta, etiqueta) {
+  const contenido = `Prueba de InroScan\nGenerado: ${new Date().toISOString()}\n`;
+  const meta = {
+    name: `inroscan-prueba-${Date.now()}.txt`,
+    parents: [idCarpeta],
+  };
+
+  // Subida multipart armada a mano: el cuerpo lleva los metadatos y el
+  // archivo en dos partes separadas por el delimitador.
+  const lim = "-----inroscan" + Math.random().toString(36).slice(2);
+  const cuerpo =
+    `--${lim}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
+    `${JSON.stringify(meta)}\r\n` +
+    `--${lim}\r\nContent-Type: text/plain\r\n\r\n${contenido}\r\n` +
+    `--${lim}--`;
+
+  // supportsAllDrives es obligatorio en CADA llamada si la carpeta vive en
+  // una unidad compartida. Sin él Drive responde «File not found» aunque la
+  // carpeta exista y haya permiso.
+  const url = "https://www.googleapis.com/upload/drive/v3/files" +
+              "?uploadType=multipart&supportsAllDrives=true&fields=id,name,webViewLink";
+
+  const r = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": `multipart/related; boundary=${lim}`,
+    },
+    body: cuerpo,
+  });
+
+  if (!r.ok) {
+    log(`${etiqueta} → HTTP ${r.status}: ${await detallar(r)}`, "x");
+    return null;
+  }
+  const f = await r.json();
+  log(`${etiqueta} → archivo creado: ${f.name}`, "v");
+  log(`   ${f.webViewLink}`, "i");
+  return f;
+}
+
+async function prueba2A() {
+  if (!cfg("cfgCarpeta")) return log("Falta el ID de la carpeta.", "x");
+  log("Prueba 2A — subiendo con el ID de carpeta, sin Picker…");
+
+  const f = await subir(cfg("cfgCarpeta"), "2A");
+  if (f) {
+    log("VEREDICTO 2A: drive.file SÍ alcanza con el ID directo. " +
+        "No hace falta Picker.", "v");
+  } else {
+    log("VEREDICTO 2A: no alcanzó. Si el error fue 404 o «File not found», " +
+        "es el límite esperado de drive.file — probá 2B.", "x");
+  }
+}
+
+// --- prueba 2B: Picker ---------------------------------------------------
+
+function prueba2B() {
+  if (!cfg("cfgApiKey")) return log("Falta la API Key para el Picker.", "x");
+  log("Prueba 2B — abriendo Picker para elegir la carpeta…");
+
+  gapi.load("picker", () => {
+    const vista = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+      .setSelectFolderEnabled(true)
+      .setIncludeFolders(true)
+      .setMode(google.picker.DocsViewMode.LIST);
+
+    new google.picker.PickerBuilder()
+      .addView(vista)
+      .enableFeature(google.picker.Feature.SUPPORT_DRIVES)
+      .setOAuthToken(token)
+      .setDeveloperKey(cfg("cfgApiKey"))
+      .setCallback(async (data) => {
+        if (data.action !== google.picker.Action.PICKED) return;
+
+        carpetaElegida = data.docs[0].id;
+        log(`Carpeta elegida: ${data.docs[0].name} (${carpetaElegida})`);
+
+        const f = await subir(carpetaElegida, "2B");
+        if (f) {
+          log("VEREDICTO 2B: con Picker sí funciona. El flujo real tendrá que " +
+              "pedir la carpeta una vez por persona y recordarla.", "v");
+        } else {
+          log("VEREDICTO 2B: tampoco funcionó. Revisá los permisos de la " +
+              "carpeta para esta cuenta antes de culpar al alcance.", "x");
+        }
+      })
+      .build()
+      .setVisible(true);
+  });
+}
+
+// --- prueba 3: Sheets ----------------------------------------------------
+
+async function prueba3() {
+  if (!cfg("cfgHoja")) return log("Falta el ID de la hoja.", "x");
+  log("Prueba 3 — agregando una fila a la hoja…");
+
+  const fila = [
+    new Date().toISOString(),
+    "prueba",
+    "InroScan spike",
+    carpetaElegida ?? cfg("cfgCarpeta"),
+  ];
+
+  // insertDataOption=INSERT_ROWS hace que cada append cree una fila nueva en
+  // lugar de sobrescribir: es lo que evita que dos personas que registran a
+  // la vez se pisen.
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${cfg("cfgHoja")}` +
+              "/values/A1:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS";
+
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ values: [fila] }),
+  });
+
+  if (!r.ok) {
+    log(`Prueba 3 → HTTP ${r.status}: ${await detallar(r)}`, "x");
+    log("VEREDICTO 3: la hoja no aceptó la escritura. Suele ser que la cuenta " +
+        "no tiene permiso de edición, o que el ID es el de la URL equivocada.", "x");
+    return;
+  }
+
+  const j = await r.json();
+  log(`Prueba 3 → fila agregada en ${j.updates?.updatedRange}`, "v");
+  log("VEREDICTO 3: el registro en Sheets funciona desde el navegador.", "v");
+}
+</script>
+</body>
+</html>
