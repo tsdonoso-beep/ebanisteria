@@ -139,7 +139,11 @@ nav { flex: 1; }
    <button> y heredarían el estilo de botón primario —fondo tinta, texto
    blanco— quedando negros en mitad de la lista. */
 .nav-item {
-  display: flex; align-items: center; gap: 11px; width: 100%;
+  /* justify-content explícito: los nav-item que son <button> heredaban el
+     `center` de la regla base y quedaban desalineados frente a sus vecinos
+     <a> y <label>, que no la reciben. */
+  display: flex; align-items: center; justify-content: flex-start;
+  gap: 11px; width: 100%;
   padding: 10px 12px; border-radius: var(--radio-s);
   background: none; border: 1px solid transparent;
   font: 500 13.5px var(--ui); color: var(--text2);
@@ -164,7 +168,8 @@ nav { flex: 1; }
 .pie-lateral { border-top: 1px solid var(--border); padding-top: 14px; }
 
 .llave {
-  display: flex; align-items: center; gap: 10px; width: 100%;
+  display: flex; align-items: center; justify-content: flex-start;
+  gap: 10px; width: 100%;
   padding: 9px 11px; border-radius: var(--radio-s);
   border: 1px solid var(--border); background: var(--surface2);
   color: var(--text2); cursor: pointer; text-align: left;
@@ -184,7 +189,7 @@ nav { flex: 1; }
 
 .sesion {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 6px; margin-top: 10px; padding-left: 4px;
+  gap: 6px; margin-top: 12px; padding: 0 4px 2px;
 }
 #quien {
   font-family: var(--mono); font-size: 10.5px; color: var(--text3);
@@ -312,7 +317,9 @@ section {
 #proyecto {
   padding: 9px 13px; border: 1px solid var(--border2); border-radius: var(--radio-s);
   font: 400 13px var(--ui); min-width: 250px;
-  background: var(--surface2); color: var(--text);
+  /* Fondo blanco: con el hundido parecía un campo deshabilitado, y es el
+     único dato que la persona escribe en toda la pantalla. */
+  background: var(--surface); color: var(--text);
   transition: border-color var(--rapido) var(--curva), background var(--rapido) var(--curva);
 }
 #proyecto:focus {
@@ -326,9 +333,9 @@ section {
 
 /* ── estado vacío ───────────────────────────────────────────────────── */
 
-.vacio { text-align: center; padding: 68px 24px 60px; }
+.vacio { text-align: center; padding: 44px 24px 40px; }
 .vacio .simbolo {
-  width: 52px; height: 52px; margin: 0 auto 16px; border-radius: var(--radio);
+  width: 46px; height: 46px; margin: 0 auto 14px; border-radius: var(--radio);
   background: var(--surface2); border: 1px solid var(--border);
   display: grid; place-items: center; color: var(--text3);
 }
