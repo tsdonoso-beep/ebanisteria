@@ -73,6 +73,19 @@ function progreso(hecho, total, detalle) {
   avisar(partes.join(" · "), "trabajando");
 }
 
+/**
+ * Rechaza con explicación en vez de no hacer nada.
+ *
+ * Un lote de doce páginas ocupa más de un minuto, y durante ese rato un clic
+ * en «Consolidado» se descartaba en silencio. Desde fuera no se distingue de
+ * un botón roto.
+ */
+function ocupadoAhora() {
+  if (!trabajando) return false;
+  avisar("Espera a que termine el lote en curso, o cancélalo.", "malo");
+  return true;
+}
+
 // --- sesión --------------------------------------------------------------
 
 async function alEntrar() {
@@ -109,7 +122,8 @@ function alSalir() {
 
 async function recibirComprobantes(archivos) {
   const lista = [...archivos];
-  if (!lista.length || trabajando) return;
+  if (!lista.length) return;
+  if (ocupadoAhora()) return;
 
   abortador = new AbortController();
   ocupado(true);
@@ -173,7 +187,8 @@ async function recibirComprobantes(archivos) {
 
 async function recibirConsolidado(archivos) {
   const lista = [...archivos];
-  if (!lista.length || trabajando) return;
+  if (!lista.length) return;
+  if (ocupadoAhora()) return;
 
   if (!getClaveGemini()) {
     return avisar("Leer un consolidado necesita clave de IA: es una tabla, no un comprobante.", "malo");
@@ -345,7 +360,7 @@ function filaDe(c, i) {
 
   if (c.estado === "error") {
     const td = crear("td", "malo", c.error);
-    td.colSpan = CAMPOS_TABLA.length + 1;
+    td.colSpan = CAMPOS_TABLA.length + 2;
     fila.append(td);
     return fila;
   }
@@ -402,6 +417,23 @@ function filaDe(c, i) {
     }
   }
   fila.append(estado);
+
+  const quitar = crear("td", "quitar");
+  if (c.estado !== "registrado") {
+    const x = crear("button", "texto", "×");
+    x.title = "Descartar esta fila";
+    x.onclick = () => {
+      // Solo se suelta la imagen si ninguna otra fila la comparte: dos
+      // comprobantes de la misma hoja apuntan a la misma miniatura.
+      const i = comprobantes.indexOf(c);
+      comprobantes.splice(i, 1);
+      if (!comprobantes.some((o) => o.huella === c.huella)) URL.revokeObjectURL(c.url);
+      recalcularCruce();
+      pintar();
+    };
+    quitar.append(x);
+  }
+  fila.append(quitar);
   return fila;
 }
 
@@ -476,10 +508,22 @@ function pintar() {
 }
 
 function pintarBotones() {
-  const listos = comprobantes.filter((c) => c.estado === "listo" && estaCompleto(c.campos)).length;
+  const pendientes = comprobantes.filter((c) => c.estado === "listo");
+  const listos = pendientes.filter((c) => estaCompleto(c.campos)).length;
+  const incompletos = pendientes.length - listos;
+
   const btn = $("#registrar");
   btn.disabled = trabajando || !listos;
   btn.textContent = listos ? `Registrar ${listos}` : "Registrar";
+  // Un botón apagado sin motivo parece roto. Si no se puede registrar, el
+  // título dice qué falta para poder.
+  btn.title = listos ? `Se registrarán ${listos} de ${pendientes.length}`
+    : incompletos ? `Completa los campos en ámbar de ${incompletos} fila${incompletos > 1 ? "s" : ""}`
+    : "Carga comprobantes primero";
+
+  $("#estadoLote").textContent = pendientes.length
+    ? `${listos} listo${listos === 1 ? "" : "s"}${incompletos ? ` · ${incompletos} por completar` : ""}`
+    : "";
   $("#limpiar").disabled = trabajando || !comprobantes.length;
 }
 

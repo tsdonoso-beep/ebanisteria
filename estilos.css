@@ -247,3 +247,56 @@ td.mini .sigue { color: var(--tenue); font-size: 17px; }
 
 body.ocupado { cursor: progress; }
 body.ocupado button:not(.texto) { opacity: .5; pointer-events: none; }
+
+/* --- el recorrido en dos pasos --- */
+
+.paso { display: flex; align-items: center; gap: 10px; }
+.paso .num {
+  width: 22px; height: 22px; border-radius: 50%; flex: none;
+  background: var(--teal); color: #fff;
+  font-size: 12px; font-weight: 700; display: grid; place-items: center;
+}
+.paso.opcional .num { background: var(--tenue); }
+.paso .chico { white-space: nowrap; }
+
+.segunda-barra {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 14px 0 0;
+}
+.segunda-barra .pista { margin: 0; flex: 1; min-width: 240px; }
+
+#estadoLote { margin-right: 4px; white-space: nowrap; }
+
+/* --- legibilidad de la tabla ---
+   Las columnas iban todas al mismo ancho y el texto se cortaba justo donde
+   importa: «FACTU», «SAMSON», «INDUSTR». Se reparte según lo que cada dato
+   necesita de verdad, y el proveedor —que es lo más largo— se lleva el resto. */
+
+#tabla { table-layout: fixed; }
+#tabla th:nth-child(1),  #tabla td:nth-child(1)  { width: 60px; }   /* miniatura */
+#tabla th:nth-child(2),  #tabla td:nth-child(2)  { width: 92px; }   /* tipo */
+#tabla th:nth-child(3),  #tabla td:nth-child(3)  { width: 62px; }   /* serie */
+#tabla th:nth-child(4),  #tabla td:nth-child(4)  { width: 78px; }   /* número */
+#tabla th:nth-child(5),  #tabla td:nth-child(5)  { width: 104px; }  /* fecha */
+#tabla th:nth-child(6),  #tabla td:nth-child(6)  { width: 108px; }  /* ruc */
+#tabla th:nth-child(7),  #tabla td:nth-child(7)  { width: auto; min-width: 150px; }
+#tabla th:nth-child(8),  #tabla td:nth-child(8)  { width: 150px; }  /* proyecto */
+#tabla th:nth-child(9),  #tabla td:nth-child(9)  { width: 140px; }  /* responsable */
+#tabla th:nth-child(10), #tabla td:nth-child(10) { width: 150px; }  /* descripción */
+#tabla th:nth-child(11), #tabla td:nth-child(11) { width: 86px; }   /* importe */
+#tabla th:nth-child(13), #tabla td:nth-child(13) { width: 34px; }   /* descartar */
+
+/* Los números se leen mejor alineados y con cifras de ancho fijo. */
+#tabla td:nth-child(4) input,
+#tabla td:nth-child(6) input,
+#tabla td:nth-child(11) input { font-variant-numeric: tabular-nums; }
+#tabla td:nth-child(11) input { text-align: right; font-weight: 600; }
+
+/* Los distintivos se apilan en vez de ensanchar la fila hasta sacarla de la
+   pantalla, que es lo que pasaba con tres o cuatro a la vez. */
+td.estado { white-space: normal; min-width: 132px; }
+td.estado span { margin: 1px 3px 1px 0; }
+
+td.quitar { text-align: center; }
+td.quitar button { padding: 2px 6px; font-size: 17px; line-height: 1; color: var(--tenue); }
+td.quitar button:hover { color: var(--rojo); }

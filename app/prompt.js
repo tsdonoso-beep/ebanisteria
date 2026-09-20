@@ -28,7 +28,8 @@ Devuelve ÚNICAMENTE un array JSON, sin explicación ni bloque de código:
     "subtotal": "",
     "igv": "",
     "importe": "",
-    "descripcion": ""
+    "descripcion": "",
+    "responsable": ""
   }
 ]
 
@@ -52,6 +53,11 @@ Reglas:
   usa la de emisión.
 - "ruc" son los once dígitos del EMISOR, no los del cliente. Empieza en 10, 15,
   17 o 20, y está junto al nombre y la dirección de la empresa, arriba.
+- En una PLANILLA DE MOVILIDAD no hay empresa emisora: el documento lo firma
+  una persona que hizo los viajes, y su nombre es el dato que importa. Ponlo
+  en "proveedor" y también en "responsable" —por ejemplo IVAN CAMACHO BRITO o
+  FERNANDO ARONI SALCEDO—, NO el nombre impreso en el membrete del
+  formulario, que es el de quien lo imprimió y se repite en todas.
 - "serie" y "numero" salen del código del comprobante. Circulan varios
   formatos y todos son válidos: F001-6384, EB01-135, FW01-434, y también
   series puramente numéricas como 0001-003936 o 002-001175. La serie es lo

@@ -38,6 +38,36 @@
 
   <section id="zona" class="solo-dentro">
     <div class="barra">
+      <div class="paso">
+        <span class="num">1</span>
+        <div class="cargar">
+          <label class="boton" for="archivos">Cargar comprobantes</label>
+          <input id="archivos" type="file" multiple accept="image/*,application/pdf" hidden>
+
+          <!-- capture abre la cámara nativa del celular. Es más fiable que
+               getUserMedia: no pelea con los permisos de iOS y en escritorio
+               degrada a un selector de archivos. -->
+          <label class="boton sec solo-movil" for="camara">Foto</label>
+          <input id="camara" type="file" accept="image/*" capture="environment" hidden>
+        </div>
+      </div>
+
+      <div class="paso opcional">
+        <span class="num">2</span>
+        <label class="boton sec" for="consolidado">Cargar consolidado</label>
+        <input id="consolidado" type="file" accept="image/*,application/pdf" hidden>
+        <span class="chico">opcional, para cuadrar</span>
+      </div>
+
+      <div class="derecha">
+        <span id="estadoLote" class="chico"></span>
+        <button id="cancelar" class="texto malo" type="button" hidden>Cancelar</button>
+        <button id="limpiar" class="texto" type="button">Vaciar</button>
+        <button id="registrar" type="button">Registrar</button>
+      </div>
+    </div>
+
+    <div class="segunda-barra">
       <!-- autocomplete off: sin esto Chrome rellena el campo con el correo de
            la persona, y el correo acaba registrado como nombre de proyecto. -->
       <input id="proyecto" type="text" placeholder="Proyecto del lote (opcional)"
@@ -48,34 +78,11 @@
         <option value="CHINA CIVIL PAQ 2">
         <option value="ADM">
       </datalist>
-
-      <div class="cargar">
-        <label class="boton" for="archivos">Comprobantes</label>
-        <input id="archivos" type="file" multiple accept="image/*,application/pdf" hidden>
-
-        <!-- capture abre la cámara nativa del celular. Es más fiable que
-             getUserMedia: no pelea con los permisos de iOS y en escritorio
-             degrada a un selector de archivos. -->
-        <label class="boton sec solo-movil" for="camara">Foto</label>
-        <input id="camara" type="file" accept="image/*" capture="environment" hidden>
-
-        <label class="boton sec" for="consolidado">Consolidado</label>
-        <input id="consolidado" type="file" accept="image/*,application/pdf" hidden>
-      </div>
-
-      <div class="derecha">
-        <button id="cancelar" class="texto malo" type="button" hidden>Cancelar</button>
-        <button id="limpiar" class="texto" type="button">Vaciar</button>
-        <button id="registrar" type="button">Registrar</button>
-      </div>
+      <p class="pista">
+        Cada página es un comprobante, y si una imagen trae dos boletas juntas
+        se separan en dos filas. Nada se guarda hasta que aprietes Registrar.
+      </p>
     </div>
-
-    <p class="pista">
-      Arrastra imágenes o PDF de comprobantes. Cada página es un comprobante, y
-      si una imagen trae dos boletas juntas se separan en dos filas.
-      Con <b>Consolidado</b> cargas la rendición de caja chica para cuadrarla
-      contra lo escaneado.
-    </p>
 
     <div id="cuadre" class="cuadre" hidden></div>
 
@@ -94,7 +101,7 @@
           <th>Tipo</th><th>Serie</th><th>Número</th><th>Fecha</th>
           <th>RUC</th><th>Proveedor</th><th>Proyecto</th><th>Responsable</th>
           <th>Descripción</th><th>Importe</th>
-          <th>Estado</th>
+          <th>Estado</th><th></th>
         </tr>
       </thead>
       <tbody id="filas"></tbody>
