@@ -276,9 +276,11 @@ async function registrar() {
     // que no quede ninguna anotada a que queden la mitad y nadie sepa cuáles.
     await agregar(PESTANA_REGISTRO, filas);
 
+    // Solo se anota la clave, no la huella: los hermanos de una misma imagen
+    // comparten huella de forma legítima, y marcarla dejaría al segundo
+    // comprobante señalado como repetido por existir el primero.
     listos.forEach((c) => {
       c.estado = "registrado";
-      previos.huellas.add(c.huella);
       const k = claveDe(c.campos);
       if (k) previos.claves.add(k);
     });
@@ -376,11 +378,17 @@ function filaDe(c, i) {
     a.target = "_blank";
     estado.append(a);
   } else {
-    estado.append(crear("span", `via ${c.via}`, ETIQUETA_VIA[c.via] ?? c.via));
+    // «incompleto» y «falta completar» decían lo mismo dos veces. Un solo
+    // distintivo, y que nombre los campos: saber que falta la fecha ahorra
+    // buscarla celda por celda.
+    if (!pendientes.length) estado.append(crear("span", `via ${c.via}`, ETIQUETA_VIA[c.via] ?? c.via));
     if (c.deVarios) estado.append(crear("span", "varios", "de imagen compartida"));
     if (c.sospechaVarios) estado.append(crear("span", "alerta", "¿más de uno? sin IA no se separan"));
-    if (previos.huellas.has(c.huella)) estado.append(crear("span", "repetido", "imagen ya subida"));
-    else if (previos.claves.has(claveDe(c.campos))) estado.append(crear("span", "repetido", "comprobante ya registrado"));
+    if (previos.claves.has(claveDe(c.campos))) {
+      estado.append(crear("span", "repetido", "comprobante ya registrado"));
+    } else if (previos.huellas.has(c.huella) && !c.deVarios) {
+      estado.append(crear("span", "repetido", "imagen ya subida"));
+    }
 
     const p = cruce?.porComprobante.get(i);
     if (p) {
@@ -389,7 +397,9 @@ function filaDe(c, i) {
     } else if (rendicion) {
       estado.append(crear("span", "alerta", "no está en el consolidado"));
     }
-    if (pendientes.length) estado.append(crear("span", "pendiente", "falta completar"));
+    if (pendientes.length) {
+      estado.append(crear("span", "pendiente", `falta ${pendientes.join(", ")}`));
+    }
   }
   fila.append(estado);
   return fila;

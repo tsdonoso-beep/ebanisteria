@@ -194,6 +194,19 @@ export function desdeIA(obj) {
   // La IA puede devolver el número entero en vez de partido.
   if (!c.serie && /[-–—]/.test(c.numero)) Object.assign(c, partirNumero(c.numero));
 
+  // Y al revés: las planillas de movilidad no tienen serie —su número va
+  // corrido, 010010— así que la IA lo deposita en «serie» y deja «numero»
+  // vacío. Una serie sola no identifica nada: si no hay número, lo que hay
+  // en serie ES el número.
+  // Los ceros a la izquierda se conservan tal como están impresos: la planilla
+  // 010010 se escribe así en el consolidado y en el papel, y recortarlos haría
+  // que la misma planilla se viera distinta según por qué camino se leyó. Para
+  // emparejar ya normaliza clave(), que es donde corresponde.
+  if (!c.numero && /^\d+$/.test(c.serie)) {
+    c.numero = c.serie;
+    c.serie = "";
+  }
+
   c.fecha = fechaISO(c.fecha || obj.fechaEmision);
   c.importe = numero(c.importe || obj.total);
   c.igv = numero(c.igv);
