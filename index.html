@@ -38,7 +38,10 @@
 
   <section id="zona" class="solo-dentro">
     <div class="barra">
-      <input id="proyecto" type="text" placeholder="Proyecto del lote (opcional)" list="proyectos">
+      <!-- autocomplete off: sin esto Chrome rellena el campo con el correo de
+           la persona, y el correo acaba registrado como nombre de proyecto. -->
+      <input id="proyecto" type="text" placeholder="Proyecto del lote (opcional)"
+             list="proyectos" autocomplete="off">
       <datalist id="proyectos">
         <option value="TALLERES ESPECIALIZADOS - PP">
         <option value="TALLERES EPT I Y II - PP">

@@ -9,7 +9,7 @@
 import { GEMINI_MODELO, getClaveGemini } from "./config.js";
 import {
   leerTexto, desdeIA, fundir, estaCompleto, pareceVarios, VACIO,
-  fechaISO, numero, partirNumero,
+  fechaISO, numero, partirNumero, claveDe,
 } from "./campos.js";
 import { PROMPT_COMPROBANTE, PROMPT_CONSOLIDADO } from "./prompt.js";
 import { conPlazo, esperar, Ritmo, Cancelado } from "./cola.js";
@@ -226,14 +226,50 @@ export async function leer(pagina, avisar, señal) {
 
   if (!lista.length) return [{ campos: porOcr, via: "parcial", sospechaVarios: varios }];
 
-  return lista.map((crudo, i) => {
-    const deIA = desdeIA(crudo);
-    // Lo del OCR solo se funde sobre el primero: si hay dos comprobantes en la
-    // imagen, el RUC o el total que sacó el OCR pertenecen a uno de los dos, y
-    // repartirlos a todos inventaría datos.
-    const campos = i === 0 && lista.length === 1 ? fundir(deIA, porOcr) : deIA;
+  const leidos = unificarRepetidos(lista.map(desdeIA));
+
+  return leidos.map((deIA, i) => {
+    // Lo del OCR solo se funde cuando hay un único comprobante: si la imagen
+    // trae dos, el RUC o el total que sacó el OCR pertenecen a uno de los dos,
+    // y repartirlos a todos inventaría datos.
+    const campos = leidos.length === 1 ? fundir(deIA, porOcr) : deIA;
     return { campos, via: estaCompleto(campos) ? "ia" : "parcial" };
   });
+}
+
+/**
+ * Funde los que comparten número de comprobante.
+ *
+ * Red de seguridad contra el error más caro de la extracción: ante una boleta
+ * de restaurante con cuatro platos, la IA tiende a devolver cuatro objetos
+ * —uno por línea— con el mismo número y el precio de cada plato. Registrarlos
+ * inventa gastos que no existen y descuadra la rendición contra la caja.
+ *
+ * Dos documentos distintos no pueden compartir número, así que cuando se
+ * repite se conserva uno solo, con el importe MAYOR: en ese reparto el total
+ * de la boleta es siempre el más grande de los trozos.
+ *
+ * No depende de que el prompt se obedezca, que es justo lo que no se puede dar
+ * por sentado.
+ */
+function unificarRepetidos(lista) {
+  const porClave = new Map();
+  const sueltos = [];
+
+  for (const c of lista) {
+    const k = claveDe(c);
+    if (!k) { sueltos.push(c); continue; }  // sin número no hay con qué comparar
+
+    const previo = porClave.get(k);
+    if (!previo) { porClave.set(k, c); continue; }
+
+    const mayor = (Number(c.importe) || 0) > (Number(previo.importe) || 0) ? c : previo;
+    const otro = mayor === c ? previo : c;
+    // Se queda el del importe mayor, completado con lo que el otro sí traía.
+    porClave.set(k, fundir(mayor, otro));
+  }
+
+  return [...porClave.values(), ...sueltos];
 }
 
 // --- consolidado ---------------------------------------------------------

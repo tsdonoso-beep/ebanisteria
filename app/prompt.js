@@ -35,9 +35,19 @@ Devuelve ÚNICAMENTE un array JSON, sin explicación ni bloque de código:
 Reglas:
 
 - Un objeto por comprobante. Si la imagen tiene tres boletas, devuelve tres
-  objetos. Si tiene uno solo, un array de un elemento.
-- Cada comprobante es un documento con su propio número y su propio total. Dos
-  productos dentro de la MISMA boleta no son dos comprobantes.
+  objetos. Si tiene una sola, un array de UN elemento.
+- El criterio para separar es el NÚMERO DE COMPROBANTE, no el contenido. Dos
+  objetos distintos tienen que tener números distintos. Si estás por devolver
+  dos objetos con el mismo número, no son dos comprobantes: es uno solo y
+  debes devolver uno solo.
+- Los productos de una boleta NO son comprobantes. Una boleta con cuatro
+  platos —un menú, una ensalada, un café, un postre— es UN objeto cuyo
+  importe es el total de la boleta, nunca cuatro objetos con el precio de
+  cada plato. Este es el error más frecuente: al verlo separado por líneas,
+  parece que fueran documentos distintos, y no lo son.
+- En la duda, devuelve menos objetos. Un comprobante de más inventa un gasto
+  que no existe y descuadra la rendición; uno de menos lo nota la persona al
+  revisar.
 - "fecha" va en formato AAAA-MM-DD. Si hay fecha de emisión y de vencimiento,
   usa la de emisión.
 - "ruc" son los once dígitos del EMISOR, no los del cliente. Empieza en 10, 15,
