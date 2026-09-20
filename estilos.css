@@ -661,9 +661,13 @@ body.ocupado button:not(.texto), body.ocupado .boton, body.ocupado .nav-item {
 
 /* Fija abajo: la revisión se hace de arriba abajo y la acción espera donde
    termina la lectura. Arriba obligaba a volver a subir para cerrar. */
+/* Sin `display` propio a propósito: declararlo acá competía con el
+   `.solo-dentro { display: none }` de arriba —misma especificidad, gana el
+   último del archivo— y la barra ganaba. El display lo pone `body.dentro
+   #pie`, que solo se cumple con sesión abierta. */
 .acciones-pie {
   position: sticky; bottom: 0; z-index: 20;
-  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+  align-items: center; gap: 20px; flex-wrap: wrap;
   margin-top: 20px; padding: 16px 30px;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radio); box-shadow: var(--sombra3);
