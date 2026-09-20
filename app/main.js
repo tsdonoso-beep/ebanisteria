@@ -552,6 +552,17 @@ function pintarBotones() {
   const btn = $("#registrar");
   btn.disabled = trabajando || !listos;
   btn.textContent = listos ? `Registrar ${listos}` : "Registrar";
+
+  // El pie solo aparece cuando hay algo que decidir: vacío, sería una barra
+  // muerta ocupando el sitio donde debería estar la invitación a cargar.
+  $("#pie").hidden = !comprobantes.length;
+  $("#pieTitulo").textContent = listos
+    ? `${listos} comprobante${listos === 1 ? "" : "s"} listo${listos === 1 ? "" : "s"} para registrar`
+    : incompletos ? "Faltan datos por completar" : "Nada por registrar todavía";
+  $("#pieNota").textContent = incompletos
+    ? `${incompletos} fila${incompletos > 1 ? "s" : ""} con celdas en ámbar. Se registran solo las completas.`
+    : listos ? "La imagen va a Drive y la fila a la hoja del área."
+    : "";
   // Un botón apagado sin motivo parece roto. Si no se puede registrar, el
   // título dice qué falta para poder.
   btn.title = listos ? `Se registrarán ${listos} de ${pendientes.length}`
@@ -580,8 +591,15 @@ function conectarCarga(idBoton, manejador) {
 
 function montar() {
   const proyecto = $("#proyecto");
-  proyecto.value = getProyecto();
-  proyecto.onchange = () => setProyecto(proyecto.value.trim());
+  // Un valor con arroba es del autocompletado del navegador, no un proyecto.
+  // Se descarta al leerlo para que un correo guardado antes no reaparezca.
+  const guardado = getProyecto();
+  proyecto.value = guardado.includes("@") ? "" : guardado;
+  proyecto.onchange = () => {
+    const v = proyecto.value.trim();
+    if (v.includes("@")) { proyecto.value = ""; return; }
+    setProyecto(v);
+  };
 
   $("#entrar").onclick = alEntrar;
   $("#salir").onclick = alSalir;
