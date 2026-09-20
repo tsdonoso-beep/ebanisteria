@@ -85,7 +85,7 @@
     </button>
     <div class="sesion">
       <span id="quien"></span>
-      <button id="salir" class="texto" type="button">Salir</button>
+      <button id="salir" class="btn texto" type="button">Salir</button>
     </div>
   </div>
 </aside>
@@ -116,7 +116,7 @@
         en la hoja del área. La herramienta escribe con tu cuenta, así que cada
         fila lleva el rastro de quién la registró.
       </p>
-      <button id="entrar" type="button">Entrar con Google</button>
+      <button class="btn" id="entrar" type="button">Entrar con Google</button>
     </section>
 
     <section id="zona" class="solo-dentro">
@@ -152,7 +152,7 @@
         </div>
         <h3>Arrastra comprobantes aquí</h3>
         <p>Imágenes o PDF. Cada página cuenta como un comprobante.</p>
-        <label class="boton" for="archivos">Elegir archivos</label>
+        <label class="btn" for="archivos">Elegir archivos</label>
         <p class="chico">
           ¿Vas a cuadrar contra una rendición? Carga primero los comprobantes y
           después el consolidado.
@@ -187,9 +187,9 @@
         <span id="pieNota"></span>
       </div>
       <div class="pie-botones">
-        <button id="cancelar" class="texto malo" type="button" hidden>Cancelar lote</button>
-        <button id="limpiar" class="texto" type="button">Vaciar</button>
-        <button id="registrar" type="button">Registrar</button>
+        <button id="cancelar" class="btn texto malo" type="button" hidden>Cancelar lote</button>
+        <button id="limpiar" class="btn texto" type="button">Vaciar</button>
+        <button class="btn" id="registrar" type="button">Registrar</button>
       </div>
     </div>
 
@@ -231,7 +231,7 @@
     </li>
   </ol>
   <div class="botones">
-    <button class="sec" type="button" onclick="document.getElementById('dlgAyuda').close()">Entendido</button>
+    <button class="btn sec" type="button" onclick="document.getElementById('dlgAyuda').close()">Entendido</button>
   </div>
 </dialog>
 
@@ -250,10 +250,10 @@
   </p>
   <input id="campoClave" type="password" placeholder="AIza…" autocomplete="off">
   <div class="botones">
-    <button id="guardarClave" type="button">Guardar</button>
-    <button id="probarClave" class="sec" type="button">Probar</button>
-    <button id="borrarClave" class="texto malo" type="button">Borrar</button>
-    <button class="texto" type="button" onclick="document.getElementById('dlgClave').close()">Cerrar</button>
+    <button class="btn" id="guardarClave" type="button">Guardar</button>
+    <button id="probarClave" class="btn sec" type="button">Probar</button>
+    <button id="borrarClave" class="btn texto malo" type="button">Borrar</button>
+    <button class="btn texto" type="button" onclick="document.getElementById('dlgClave').close()">Cerrar</button>
   </div>
 </dialog>
 

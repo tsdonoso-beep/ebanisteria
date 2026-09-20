@@ -135,13 +135,10 @@ nav { flex: 1; }
 .grupo { padding: 0 10px; margin: 18px 0 7px; }
 .grupo:first-child { margin-top: 0; }
 
-/* El reset de fondo y borde es obligatorio, no cosmético: algunos nav-item son
-   <button> y heredarían el estilo de botón primario —fondo tinta, texto
-   blanco— quedando negros en mitad de la lista. */
+/* Ya no necesita resetear nada: el estilo de acción cuelga de `.btn`, que
+   estos no llevan. Antes había que apagarle fondo, borde y centrado uno por
+   uno, y bastaba olvidar una propiedad para que apareciera un fallo. */
 .nav-item {
-  /* justify-content explícito: los nav-item que son <button> heredaban el
-     `center` de la regla base y quedaban desalineados frente a sus vecinos
-     <a> y <label>, que no la reciben. */
   display: flex; align-items: center; justify-content: flex-start;
   gap: 11px; width: 100%;
   padding: 10px 12px; border-radius: var(--radio-s);
@@ -150,7 +147,6 @@ nav { flex: 1; }
   cursor: pointer; text-decoration: none; text-align: left; margin-bottom: 2px;
   transition: background var(--rapido) var(--curva), color var(--rapido) var(--curva);
 }
-.nav-item:hover:not(:disabled) { transform: none; box-shadow: none; }
 .nav-item svg {
   width: 17px; height: 17px; flex: none;
   fill: none; stroke: currentColor; stroke-width: 1.8;
@@ -242,7 +238,17 @@ h1 { font-size: 17px; font-weight: 700; letter-spacing: -.02em; margin: 0; }
 
 /* ── botones ────────────────────────────────────────────────────────── */
 
-button, .boton {
+/**
+ * El estilo de acción vive en una clase, no en el selector `button`.
+ *
+ * Colgarlo del tipo hacía que cualquier <button> lo recibiera quisiera o no, y
+ * componentes que solo son botones por semántica —un ítem de navegación, el
+ * selector de clave— tenían que desactivarlo propiedad por propiedad. Tres
+ * fallos salieron de ahí: uno que quedó negro, otro desalineado, y un tercero
+ * que se mostraba pese a `hidden`, todos por una propiedad que nadie
+ * redeclaró. Con la clase, lo que no la lleva no recibe nada.
+ */
+.btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   padding: 9px 18px; border-radius: var(--radio-s);
   border: 1px solid var(--accent); background: var(--accent); color: #fff;
@@ -251,27 +257,27 @@ button, .boton {
               box-shadow var(--rapido) var(--curva),
               background var(--rapido) var(--curva);
 }
-button:hover:not(:disabled), .boton:hover {
+.btn:hover:not(:disabled) {
   transform: translateY(-1px); box-shadow: var(--sombra2);
   background: var(--accent-texto); border-color: var(--accent-texto);
 }
-button:active:not(:disabled), .boton:active { transform: translateY(0); }
+.btn:active:not(:disabled) { transform: translateY(0); }
 
-button.sec, .boton.sec {
+.btn.sec {
   background: var(--surface); color: var(--accent-texto); border-color: var(--border2);
 }
-button.sec:hover:not(:disabled) { border-color: var(--accent); }
+.btn.sec:hover:not(:disabled) { border-color: var(--accent); }
 
-button.texto {
+.btn.texto {
   background: none; border-color: transparent; color: var(--text2);
   padding: 9px 12px; font-weight: 500;
 }
-button.texto:hover:not(:disabled) {
+.btn.texto:hover:not(:disabled) {
   background: var(--surface2); color: var(--text);
   transform: none; box-shadow: none;
 }
-button.texto.malo { color: var(--danger); }
-button:disabled { opacity: .4; cursor: not-allowed; }
+.btn.texto.malo { color: var(--danger); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
 
 /* ── contenido ──────────────────────────────────────────────────────── */
 
@@ -454,11 +460,11 @@ td.estado a {
 td.estado a:hover { border-bottom-color: var(--accent); }
 
 td.quitar { text-align: center; }
-td.quitar button {
+td.quitar .btn {
   padding: 2px 6px; font-size: 16px; line-height: 1; color: var(--text3);
   background: none; border-color: transparent; border-radius: var(--radio-s);
 }
-td.quitar button:hover {
+td.quitar .btn:hover {
   color: var(--danger); background: var(--danger-bg);
   transform: none; box-shadow: none;
 }
@@ -537,7 +543,7 @@ dialog .botones { display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
 dialog a { color: var(--accent-texto); font-weight: 600; }
 
 body.ocupado { cursor: progress; }
-body.ocupado button:not(.texto), body.ocupado .boton, body.ocupado .nav-item {
+body.ocupado .btn:not(.texto), body.ocupado .nav-item {
   opacity: .5; pointer-events: none;
 }
 

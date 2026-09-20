@@ -420,7 +420,7 @@ function filaDe(c, i) {
 
   const quitar = crear("td", "quitar");
   if (c.estado !== "registrado") {
-    const x = crear("button", "texto", "×");
+    const x = crear("button", "btn texto", "×");
     x.title = "Descartar esta fila";
     x.onclick = () => {
       // Solo se suelta la imagen si ninguna otra fila la comparte: dos
@@ -491,7 +491,7 @@ function pintarCuadre() {
     caja.append(det);
   }
 
-  const btn = crear("button", "sec", `Registrar las ${rendicion.lineas.length} líneas del consolidado`);
+  const btn = crear("button", "btn sec", `Registrar las ${rendicion.lineas.length} líneas del consolidado`);
   btn.onclick = registrarConsolidado;
   btn.disabled = trabajando;
   caja.append(btn);
