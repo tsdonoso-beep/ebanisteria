@@ -12,6 +12,16 @@ import {
   fechaISO, numero, partirNumero,
 } from "./campos.js";
 import { PROMPT_COMPROBANTE, PROMPT_CONSOLIDADO } from "./prompt.js";
+import { conPlazo, esperar, Ritmo, Cancelado } from "./cola.js";
+
+/** Plazo del OCR de una página. Pasado eso se da por muerto el trabajador. */
+const PLAZO_OCR = 45_000;
+/** Plazo de una llamada a la IA, ya descontadas sus propias esperas. */
+const PLAZO_IA = 90_000;
+
+/** Un solo ritmo para toda la aplicación: la cuota es de la clave, no de la página. */
+const ritmo = new Ritmo();
+export const ritmoActual = () => ritmo.segundos;
 
 // --- OCR en el navegador -------------------------------------------------
 
@@ -33,10 +43,29 @@ async function obtenerTrabajador(avisar) {
   return trabajador;
 }
 
+/**
+ * OCR de una página, con plazo.
+ *
+ * Tras varias páginas grandes el trabajador puede quedarse sin memoria y morir
+ * en silencio: la promesa no se resuelve nunca y el lote se congela sin error.
+ * El plazo lo convierte en un fallo normal, y el trabajador se tira para que
+ * la siguiente página empiece con uno sano.
+ */
 async function leerConOcr(blob, avisar) {
   const t = await obtenerTrabajador(avisar);
-  const { data } = await t.recognize(blob);
-  return data.text ?? "";
+  try {
+    const { data } = await conPlazo(t.recognize(blob), PLAZO_OCR, "El OCR");
+    return data.text ?? "";
+  } catch (e) {
+    await tirarTrabajador();
+    throw e;
+  }
+}
+
+async function tirarTrabajador() {
+  const viejo = trabajador;
+  trabajador = null;
+  try { await viejo?.terminate(); } catch { /* ya estaba muerto */ }
 }
 
 // --- llamada a la IA -----------------------------------------------------
@@ -62,9 +91,7 @@ function extraerJSON(texto) {
   }
 }
 
-const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
-
-async function preguntar(blob, prompt, clave, maxTokens = 4096) {
+async function preguntar(blob, prompt, clave, maxTokens = 4096, señal) {
   const cuerpo = {
     contents: [{
       parts: [
@@ -78,20 +105,32 @@ async function preguntar(blob, prompt, clave, maxTokens = 4096) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/` +
               `${GEMINI_MODELO}:generateContent?key=${encodeURIComponent(clave)}`;
 
-  // 429 y 503 son cuota agotada o servicio saturado: se reintenta espaciado.
+  // 429 y 503 son cuota agotada o servicio saturado: se reintenta espaciado y
+  // se ensancha el ritmo, para que lo que venga detrás no repita el choque.
   // Cualquier otro error es definitivo y se informa de una vez.
   for (let intento = 1; intento <= 3; intento++) {
-    const r = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(cuerpo),
-    });
+    if (señal?.aborted) throw new Cancelado();
+
+    const r = await ritmo.turno(() => conPlazo(
+      fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cuerpo),
+        signal: señal,
+      }), PLAZO_IA, "La IA"));
 
     if (r.status === 429 || r.status === 503) {
-      if (intento === 3) throw new Error("La cuota de tu clave de IA se agotó o el servicio está saturado.");
-      await esperar(intento * 4000);
+      ritmo.frenar();
+      if (intento === 3) {
+        throw new Error(
+          "La cuota de tu clave de IA se agotó. Espera unos minutos, o reparte " +
+          "el lote entre varias personas: cada clave tiene su propio límite."
+        );
+      }
+      await esperar(intento * 8000);
       continue;
     }
+    ritmo.aflojar();
     if (!r.ok) {
       const detalle = (await r.text()).slice(0, 200);
       if (r.status === 400 && /API_KEY/i.test(detalle)) {
@@ -106,6 +145,37 @@ async function preguntar(blob, prompt, clave, maxTokens = 4096) {
   return null;
 }
 
+// --- cuándo vale la pena el OCR -----------------------------------------
+
+/**
+ * Historial reciente de si el OCR bastó.
+ *
+ * En un lote de planillas escaneadas el OCR no resuelve casi ninguna, pero se
+ * le pagan igual sus diez o veinte segundos por página antes de llamar a la
+ * IA, que es quien acaba leyéndola. En un PDF de doce páginas eso son varios
+ * minutos tirados, y desde fuera parece que la herramienta se colgó.
+ *
+ * Tras unos cuantos fracasos seguidos se deja de intentar y se va directo a la
+ * IA. Cada lote nuevo vuelve a probar: el siguiente puede ser de boletas
+ * limpias donde el OCR sí alcanza y no cuesta cuota.
+ */
+let ocrReciente = [];
+
+function anotarOcr(sirvio) {
+  ocrReciente.push(sirvio);
+  if (ocrReciente.length > 5) ocrReciente.shift();
+}
+
+function valeLaPenaElOcr() {
+  if (!getClaveGemini()) return true;  // sin IA, el OCR es lo único que hay
+  return !(ocrReciente.length >= 4 && ocrReciente.every((x) => !x));
+}
+
+/** Al empezar un lote se olvida lo aprendido: puede ser material distinto. */
+export function reiniciarAprendizaje() { ocrReciente = []; }
+
+export const ocrDesactivado = () => !valeLaPenaElOcr();
+
 // --- comprobantes --------------------------------------------------------
 
 /**
@@ -118,19 +188,27 @@ async function preguntar(blob, prompt, clave, maxTokens = 4096) {
  * cuando hizo falta el respaldo, y «parcial» cuando ni así se completó — esa
  * fila queda para terminarla a mano, no se descarta.
  */
-export async function leer(pagina, avisar) {
+export async function leer(pagina, avisar, señal) {
+  if (señal?.aborted) throw new Cancelado();
+
   let texto = "";
-  try {
-    texto = await leerConOcr(pagina.blob, avisar);
-  } catch (e) {
-    // Que el OCR falle no es el final: la IA puede leer la imagen igual.
-    console.warn("OCR falló:", e);
+  if (valeLaPenaElOcr()) {
+    try {
+      texto = await leerConOcr(pagina.blob, avisar);
+    } catch (e) {
+      // Que el OCR falle no es el final: la IA puede leer la imagen igual.
+      console.warn("OCR falló:", e);
+    }
   }
 
   const porOcr = leerTexto(texto);
   const varios = pareceVarios(texto);
 
-  if (!varios && estaCompleto(porOcr)) return [{ campos: porOcr, via: "ocr" }];
+  if (!varios && estaCompleto(porOcr)) {
+    anotarOcr(true);
+    return [{ campos: porOcr, via: "ocr" }];
+  }
+  anotarOcr(false);
 
   const claveIA = getClaveGemini();
   if (!claveIA) {
@@ -143,7 +221,7 @@ export async function leer(pagina, avisar) {
   avisar?.(varios ? "Parece haber más de un comprobante; consultando a la IA…"
                   : "El OCR no resolvió; consultando a la IA…");
 
-  const respuesta = await preguntar(pagina.blob, PROMPT_COMPROBANTE, claveIA);
+  const respuesta = await preguntar(pagina.blob, PROMPT_COMPROBANTE, claveIA, 4096, señal);
   const lista = Array.isArray(respuesta) ? respuesta : respuesta ? [respuesta] : [];
 
   if (!lista.length) return [{ campos: porOcr, via: "parcial", sospechaVarios: varios }];

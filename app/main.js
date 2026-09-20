@@ -13,7 +13,8 @@ import { entrar, salir, sesion } from "./auth.js";
 import { preparar, agregar, yaRegistrado } from "./sheets.js";
 import { carpetaDelDia, subir, fechaCarpeta } from "./drive.js";
 import { aPaginas } from "./paginas.js";
-import { leer, leerConsolidado, probarClave } from "./lectura.js";
+import { leer, leerConsolidado, probarClave, reiniciarAprendizaje, ocrDesactivado, ritmoActual } from "./lectura.js";
+import { Cancelado } from "./cola.js";
 import { estaCompleto, faltantes, claveDe } from "./campos.js";
 import { cruzar, heredar, resumen } from "./conciliacion.js";
 
@@ -32,6 +33,8 @@ let rendicion = null;
 let cruce = null;
 let previos = { huellas: new Set(), claves: new Set() };
 let trabajando = false;
+/** Permite abandonar un lote largo sin recargar la página. */
+let abortador = null;
 
 // --- avisos --------------------------------------------------------------
 
@@ -48,8 +51,27 @@ function avisar(texto, tono = "") {
 const ocupado = (v) => {
   trabajando = v;
   document.body.classList.toggle("ocupado", v);
+  $("#cancelar").hidden = !v;
+  if (!v) abortador = null;
   pintarBotones();
 };
+
+/**
+ * Progreso con numerador y denominador.
+ *
+ * Un lote de doce páginas con la IA de por medio tarda varios minutos, y sin
+ * un «7 de 12» no hay forma de distinguir lento de colgado. Es la diferencia
+ * entre esperar tranquilo y recargar a la mitad.
+ */
+function progreso(hecho, total, detalle) {
+  const partes = [`${hecho} de ${total}`];
+  if (detalle) partes.push(detalle);
+  // Si el OCR se apagó solo, decirlo: explica por qué de pronto va más rápido
+  // y por qué se está gastando cuota en páginas que antes salían gratis.
+  if (ocrDesactivado()) partes.push("OCR saltado, va directo a la IA");
+  if (ritmoActual() > 5) partes.push(`IA a ${ritmoActual()} s por página`);
+  avisar(partes.join(" · "), "trabajando");
+}
 
 // --- sesión --------------------------------------------------------------
 
@@ -89,7 +111,10 @@ async function recibirComprobantes(archivos) {
   const lista = [...archivos];
   if (!lista.length || trabajando) return;
 
+  abortador = new AbortController();
   ocupado(true);
+  reiniciarAprendizaje();
+
   try {
     avisar("Preparando las páginas…", "trabajando");
     const paginas = await aPaginas(lista, (t) => avisar(t, "trabajando"));
@@ -97,14 +122,17 @@ async function recibirComprobantes(archivos) {
 
     const proyecto = $("#proyecto").value.trim();
 
-    for (const p of paginas) {
+    for (const [n, p] of paginas.entries()) {
       const cual = `${p.origen}${p.totalPaginas > 1 ? ` · pág. ${p.pagina}` : ""}`;
-      avisar(`Leyendo ${cual}…`, "trabajando");
+      progreso(n + 1, paginas.length, cual);
 
       let leidos;
       try {
-        leidos = await leer(p, (t) => avisar(`${cual} — ${t}`, "trabajando"));
+        leidos = await leer(p, (t) => progreso(n + 1, paginas.length, `${cual} — ${t}`), abortador.signal);
       } catch (e) {
+        if (e instanceof Cancelado || e.name === "AbortError") throw e;
+        // Un fallo en una página no cancela el lote: se anota en su fila y se
+        // sigue, que es lo contrario de perder las once restantes.
         comprobantes.push({ ...p, estado: "error", error: e.message, campos: null });
         pintar();
         continue;
@@ -128,9 +156,13 @@ async function recibirComprobantes(archivos) {
     }
 
     recalcularCruce();
-    avisar("");
+    const conError = comprobantes.filter((c) => c.estado === "error").length;
+    avisar(conError ? `Listo, con ${conError} página${conError > 1 ? "s" : ""} que falló.` : "",
+           conError ? "malo" : "");
   } catch (e) {
-    avisar(e.message, "malo");
+    avisar(e instanceof Cancelado || e.name === "AbortError"
+      ? "Lote cancelado. Lo ya leído se conserva."
+      : e.message, "malo");
   } finally {
     ocupado(false);
     pintar();
@@ -155,7 +187,7 @@ async function recibirConsolidado(archivos) {
     const acumulado = { caja: "", administrador: "", montoAsignado: "", gastosRealizados: "", lineas: [] };
 
     for (const [i, p] of paginas.entries()) {
-      avisar(`Leyendo el consolidado — página ${i + 1} de ${paginas.length}…`, "trabajando");
+      progreso(i + 1, paginas.length, "consolidado");
       const parte = await leerConsolidado(p, (t) => avisar(t, "trabajando"));
 
       // La cabecera solo viene en la primera página; las demás traen tabla.
@@ -463,6 +495,10 @@ function montar() {
   $("#entrar").onclick = alEntrar;
   $("#salir").onclick = alSalir;
   $("#registrar").onclick = registrar;
+  $("#cancelar").onclick = () => {
+    abortador?.abort();
+    avisar("Cancelando al terminar la página en curso…", "trabajando");
+  };
   $("#limpiar").onclick = () => {
     comprobantes.forEach((c) => URL.revokeObjectURL(c.url));
     comprobantes = [];
