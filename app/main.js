@@ -190,8 +190,14 @@ async function recibirConsolidado(archivos) {
   if (!lista.length) return;
   if (ocupadoAhora()) return;
 
+  // Sin clave no se puede leer una tabla de cincuenta filas. Antes esto era un
+  // aviso que se desvanecía en siete segundos: desde abajo, donde está la
+  // tabla, no se veía, y el botón parecía no hacer nada. Ahora se abre el
+  // diálogo de la clave, que es lo único que desbloquea la situación.
   if (!getClaveGemini()) {
-    return avisar("Leer un consolidado necesita clave de IA: es una tabla, no un comprobante.", "malo");
+    avisar("El consolidado es una tabla de decenas de filas: necesita clave de IA.", "malo");
+    abrirClave("Para leer un consolidado hace falta la clave. Pégala y vuelve a cargarlo.");
+    return;
   }
 
   ocupado(true);
@@ -397,23 +403,27 @@ function filaDe(c, i) {
     // distintivo, y que nombre los campos: saber que falta la fecha ahorra
     // buscarla celda por celda.
     if (!pendientes.length) estado.append(crear("span", `via ${c.via}`, ETIQUETA_VIA[c.via] ?? c.via));
-    if (c.deVarios) estado.append(crear("span", "varios", "de imagen compartida"));
-    if (c.sospechaVarios) estado.append(crear("span", "alerta", "¿más de uno? sin IA no se separan"));
+    if (c.deVarios) estado.append(crear("span", "varios", "hoja compartida"));
+    if (c.sospechaVarios) estado.append(crear("span", "alerta", "¿varios? falta IA"));
     if (previos.claves.has(claveDe(c.campos))) {
-      estado.append(crear("span", "repetido", "comprobante ya registrado"));
+      estado.append(crear("span", "repetido", "ya registrado"));
     } else if (previos.huellas.has(c.huella) && !c.deVarios) {
-      estado.append(crear("span", "repetido", "imagen ya subida"));
+      estado.append(crear("span", "repetido", "imagen repetida"));
     }
 
     const p = cruce?.porComprobante.get(i);
     if (p) {
       estado.append(crear("span", `cuadra ${p.como === "numero" ? "" : "flojo"}`,
-        p.como === "numero" ? "cuadra con el consolidado" : "cuadra por fecha e importe"));
+        p.como === "numero" ? "cuadra" : "cuadra por fecha e importe"));
     } else if (rendicion) {
-      estado.append(crear("span", "alerta", "no está en el consolidado"));
+      estado.append(crear("span", "alerta", "no declarado"));
     }
     if (pendientes.length) {
-      estado.append(crear("span", "pendiente", `falta ${pendientes.join(", ")}`));
+      // Nombrar hasta dos campos; más de eso no cabe y no ayuda.
+      const falta = pendientes.length > 2
+        ? `faltan ${pendientes.length} datos`
+        : `falta ${pendientes.join(" y ")}`;
+      estado.append(crear("span", "pendiente", falta));
     }
   }
   fila.append(estado);
@@ -526,7 +536,11 @@ function pintarResumen() {
 
   caja.replaceChildren(
     tarjeta(vivos.length, "Comprobantes", `S/ ${suma.toFixed(2)} en total`),
-    tarjeta(conIA, "Leídos con IA", conIA ? "el OCR no resolvió estos" : "los resolvió el OCR, sin cuota"),
+    tarjeta(conIA, "Leídos con IA",
+            conIA ? "el OCR no resolvió estos"
+            : !getClaveGemini() ? "sin clave configurada: solo OCR"
+            : "los resolvió el OCR, sin cuota",
+            !conIA && !getClaveGemini() && porCompletar ? "ojo" : ""),
     tarjeta(porCompletar, "Por completar", porCompletar ? "revisa las celdas en ámbar" : "no falta ningún dato",
             porCompletar ? "ojo" : ""),
     tarjeta(registrados || listos, registrados ? "Registrados" : "Listos para registrar",
@@ -577,9 +591,21 @@ function pintarBotones() {
 
 // --- clave de IA ---------------------------------------------------------
 
+/** Abre el diálogo, opcionalmente diciendo qué lo disparó. */
+function abrirClave(motivo = "") {
+  $("#campoClave").value = getClaveGemini();
+  $("#motivoClave").textContent = motivo;
+  $("#motivoClave").hidden = !motivo;
+  $("#dlgClave").showModal();
+}
+
 function pintarClave() {
   const k = getClaveGemini();
   $("#estadoClave").textContent = k ? enmascarar(k) : "sin configurar";
+  // El consolidado no funciona sin clave: decirlo en el propio ítem evita
+  // que alguien lo intente y crea que está roto.
+  $("#avisoConsolidado").textContent = k ? "cuadre" : "falta clave";
+  $("#avisoConsolidado").classList.toggle("falta-clave", !k);
 }
 
 // --- arranque ------------------------------------------------------------
@@ -630,10 +656,7 @@ function montar() {
   }));
   zona.addEventListener("drop", (e) => recibirComprobantes(e.dataTransfer.files));
 
-  $("#btnClave").onclick = () => {
-    $("#campoClave").value = getClaveGemini();
-    $("#dlgClave").showModal();
-  };
+  $("#btnClave").onclick = () => abrirClave();
   $("#guardarClave").onclick = () => {
     const k = $("#campoClave").value.trim();
     if (k && !pareceClaveGemini(k)) {

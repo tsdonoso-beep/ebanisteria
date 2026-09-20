@@ -104,9 +104,20 @@ body.dentro .solo-fuera { display: none; }
 body.dentro .lateral { display: flex; }
 body.dentro .lienzo { margin-left: var(--lateral); }
 
-/** Etiqueta pequeña sobre un campo o una cifra. */
-.rotulo, th {
+/**
+ * Etiqueta pequeña sobre un campo o una cifra.
+ *
+ * `th` comparte la tipografía pero NO el display: un th en block deja de ser
+ * celda, y las columnas se apilan en escalera. Por eso van separados aunque
+ * se repitan tres declaraciones.
+ */
+.rotulo {
   display: block;
+  font-family: var(--display);
+  font-size: 10.5px; font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--text3);
+}
+th {
   font-family: var(--display);
   font-size: 10.5px; font-weight: 700; letter-spacing: .07em;
   text-transform: uppercase; color: var(--text3);
@@ -432,9 +443,13 @@ td.malo { color: var(--danger); font-size: 12.5px; }
 td.estado { white-space: normal; min-width: 126px; }
 td.estado span {
   display: inline-flex; align-items: center; gap: 5px;
-  padding: 2px 8px; border-radius: 99px;
+  padding: 3px 9px; border-radius: 99px;
   font: 600 10.5px var(--ui); margin: 1px 3px 1px 0;
   border: 1px solid transparent;
+  /* Sin esto el texto largo se parte dentro de la píldora y el radio de 99px
+     la convierte en un globo. La fila envuelve entre distintivos, no dentro
+     de uno. */
+  white-space: nowrap;
 }
 /* Un punto antes del texto: separa los estados sin depender solo del color,
    que es lo que falla cuando alguien no distingue bien verde de ámbar. */
@@ -703,3 +718,15 @@ body.ocupado .btn:not(.texto), body.ocupado .nav-item {
 /* `solo-dentro` usa display:revert, que en un div daría block y rompería la
    fila. El pie necesita su flex de vuelta, y con más peso que esa regla. */
 body.dentro #pie { display: flex; }
+
+/* Marca en la lateral que al consolidado le falta la clave para funcionar. */
+.opcional.falta-clave {
+  background: var(--warn-bg); color: var(--warn);
+}
+
+/* Por qué se abrió el diálogo, cuando lo abrió el código y no la persona. */
+.motivo {
+  background: var(--warn-bg); color: var(--warn);
+  border: 1px solid var(--warn-borde); border-radius: var(--radio-s);
+  padding: 9px 12px; font-size: 12.5px; font-weight: 500; margin: 0 0 14px;
+}
