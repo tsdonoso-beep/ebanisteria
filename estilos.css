@@ -77,6 +77,19 @@
 
 * { box-sizing: border-box; }
 
+/**
+ * El atributo hidden manda sobre cualquier display.
+ *
+ * Sin esto no funciona: el `[hidden] { display: none }` de la hoja del
+ * navegador pierde contra cualquier regla de autor que fije display, por poca
+ * especificidad que tenga. Así aparecieron la barra de acciones y la tabla en
+ * la pantalla de entrada, antes de que nadie hubiera entrado.
+ *
+ * Es el único !important de la hoja, y se gana el sitio: la alternativa es
+ * acordarse de esta trampa en cada componente nuevo que se oculte.
+ */
+[hidden] { display: none !important; }
+
 body {
   margin: 0; min-height: 100dvh;
   background: var(--bg); color: var(--text);
@@ -669,3 +682,7 @@ body.ocupado button:not(.texto), body.ocupado .boton, body.ocupado .nav-item {
   .acciones-pie { padding: 14px 16px; }
   .pie-botones { width: 100%; justify-content: flex-end; }
 }
+
+/* `solo-dentro` usa display:revert, que en un div daría block y rompería la
+   fila. El pie necesita su flex de vuelta, y con más peso que esa regla. */
+body.dentro #pie { display: flex; }
