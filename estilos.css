@@ -631,15 +631,15 @@ body.ocupado button:not(.texto), body.ocupado .boton, body.ocupado .nav-item {
 /* ── lockup de marca ────────────────────────────────────────────────── */
 
 .logo { padding: 0 6px 20px; }
+/* El logotipo va a su ancho natural menos el que ocupa el respiro lateral.
+   Alto automático para no deformarlo si cambia la lateral. */
 .lockup {
-  display: flex; align-items: center; gap: 9px;
-  padding-bottom: 14px; margin-bottom: 14px;
+  display: block; width: 100%; max-width: 168px; height: auto;
+  padding-bottom: 16px; margin-bottom: 15px;
   border-bottom: 1px solid var(--border);
 }
-.marca-simbolo { width: 26px; height: 26px; flex: none; }
-.marca-texto {
-  font-family: var(--display); font-size: 13px; font-weight: 800;
-  letter-spacing: .13em; color: var(--tinta);
+.marca-puerta {
+  display: block; width: 176px; height: auto; margin: 0 auto 22px;
 }
 .producto { padding-left: 2px; }
 .logo .rotulo { margin-top: 4px; }
