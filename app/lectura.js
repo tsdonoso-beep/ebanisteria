@@ -11,7 +11,7 @@ import {
   leerTexto, desdeIA, fundir, estaCompleto, pareceVarios, VACIO,
   fechaISO, numero, partirNumero, claveDe,
 } from "./campos.js";
-import { PROMPT_COMPROBANTE, PROMPT_CONSOLIDADO } from "./prompt.js";
+import { PROMPT_COMPROBANTE, PROMPT_CONSOLIDADO, PROMPT_CONSOLIDADO_TEXTO } from "./prompt.js";
 import { conPlazo, esperar, Ritmo, Cancelado } from "./cola.js";
 
 /** Plazo del OCR de una página. Pasado eso se da por muerto el trabajador. */
@@ -91,14 +91,18 @@ function extraerJSON(texto) {
   }
 }
 
-async function preguntar(blob, prompt, clave, maxTokens = 4096, señal) {
+/**
+ * `adjunto` puede ser un blob —una imagen que hay que mirar— o texto ya
+ * extraído. El texto cuesta una fracción de lo que cuesta una imagen y no
+ * arrastra errores de lectura, así que se prefiere siempre que exista.
+ */
+async function preguntar(adjunto, prompt, clave, maxTokens = 4096, señal) {
+  const parte = typeof adjunto === "string"
+    ? { text: adjunto }
+    : { inlineData: { mimeType: adjunto.type || "image/jpeg", data: await enBase64(adjunto) } };
+
   const cuerpo = {
-    contents: [{
-      parts: [
-        { text: prompt },
-        { inlineData: { mimeType: blob.type || "image/jpeg", data: await enBase64(blob) } },
-      ],
-    }],
+    contents: [{ parts: [{ text: prompt }, parte] }],
     generationConfig: { temperature: 0.1, maxOutputTokens: maxTokens },
   };
 
@@ -288,8 +292,17 @@ export async function leerConsolidado(pagina, avisar) {
     throw new Error("Leer un consolidado necesita clave de IA: es una tabla, no un comprobante.");
   }
 
-  avisar?.("Leyendo la tabla del consolidado…");
-  const j = await preguntar(pagina.blob, PROMPT_CONSOLIDADO, claveIA, 8192);
+  // El texto, cuando existe, gana siempre: es exacto, cuesta una fracción de
+  // lo que cuesta una imagen y no arrastra errores de lectura. La imagen queda
+  // para el consolidado escaneado, que no trae texto que extraer.
+  const hayTexto = Boolean(pagina.texto?.length);
+  avisar?.(hayTexto
+    ? "Repartiendo en columnas el texto del consolidado…"
+    : "Sin capa de texto: leyendo la tabla de la imagen…");
+
+  const j = hayTexto
+    ? await preguntar(pagina.texto.join("\n"), PROMPT_CONSOLIDADO_TEXTO, claveIA, 8192)
+    : await preguntar(pagina.blob, PROMPT_CONSOLIDADO, claveIA, 8192);
   if (!j) throw new Error("No se pudo leer la tabla de esta página.");
 
   const lineas = (Array.isArray(j.lineas) ? j.lineas : []).map((l) => {

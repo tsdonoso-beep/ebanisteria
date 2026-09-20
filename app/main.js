@@ -13,6 +13,7 @@ import { entrar, salir, sesion } from "./auth.js";
 import { preparar, agregar, yaRegistrado } from "./sheets.js";
 import { carpetaDelDia, subir, fechaCarpeta } from "./drive.js";
 import { aPaginas } from "./paginas.js";
+import { textoDePdf } from "./texto-pdf.js";
 import { leer, leerConsolidado, probarClave, reiniciarAprendizaje, ocrDesactivado, ritmoActual } from "./lectura.js";
 import { Cancelado } from "./cola.js";
 import { estaCompleto, faltantes, claveDe } from "./campos.js";
@@ -202,8 +203,16 @@ async function recibirConsolidado(archivos) {
 
   ocupado(true);
   try {
+    // Se saca la capa de texto antes de rasterizar: si el PDF la tiene, la
+    // lectura sale exacta y la imagen solo se usa de respaldo.
+    const texto = await textoDePdf(lista[0], (t) => avisar(t, "trabajando"));
     const paginas = await aPaginas(lista, (t) => avisar(t, "trabajando"));
     if (!paginas.length) return avisar("No se pudo abrir ese archivo.", "malo");
+
+    paginas.forEach((p, i) => { p.texto = texto?.[i] ?? null; });
+    if (!texto) {
+      avisar("El consolidado no trae capa de texto; se leerá de la imagen.", "trabajando");
+    }
 
     const acumulado = { caja: "", administrador: "", montoAsignado: "", gastosRealizados: "", lineas: [] };
 

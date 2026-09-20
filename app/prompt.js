@@ -73,7 +73,52 @@ inventes ni lo deduzcas: un campo vacío lo corrige una persona en dos segundos,
 pero un dato inventado que parece correcto se registra mal y nadie lo nota.`;
 
 /**
- * Lectura de un consolidado de caja chica.
+ * Consolidado leído de la capa de texto del PDF.
+ *
+ * Llega el texto exacto, fila por fila, sin un solo error de lectura: el PDF
+ * sale de una hoja de cálculo y lo trae dentro. Lo que queda por hacer no es
+ * leer sino repartir cada fila en sus campos, y eso es lo único que se delega.
+ */
+export const PROMPT_CONSOLIDADO_TEXTO = `Recibes las filas de un CONSOLIDADO DE CAJA CHICA peruano, extraídas del PDF
+tal como están. Cada línea es una fila de la tabla; dentro de una línea, los
+campos van separados por dos o más espacios, en el mismo orden que las
+columnas.
+
+El texto es exacto: NO lo corrijas ni lo interpretes. Tu trabajo es solo
+repartir cada fila en sus campos.
+
+Devuelve ÚNICAMENTE este objeto JSON, sin explicación ni bloque de código:
+
+{
+  "caja": "",
+  "administrador": "",
+  "montoAsignado": "",
+  "gastosRealizados": "",
+  "lineas": [
+    {
+      "fecha": "", "tipo": "", "numero": "", "proveedor": "", "proyecto": "",
+      "area": "", "responsable": "", "categoria": "", "subcategoria": "",
+      "clasificacion": "", "descripcion": "", "importe": ""
+    }
+  ]
+}
+
+Reglas:
+
+- Una entrada por CADA fila de datos, en su orden. Las de cabecera y las de
+  totales no son filas de datos.
+- El valor de una celda puede venir partido en la línea si el texto envolvía
+  en el papel: «PLANILLA DE» y «MOVILIDAD» son una sola celda.
+- Copia los textos tal cual. Un nombre mal escrito en el papel va mal escrito
+  acá: esto se cruza contra los comprobantes, y un dato «arreglado» hace que
+  el cuadre mienta.
+- "fecha" en formato AAAA-MM-DD. Los importes con punto decimal, sin símbolo
+  ni separador de millar.
+- La cabecera —caja, administrador, montos— solo está en la primera página. Si
+  esta no la trae, deja esos campos vacíos.`;
+
+/**
+ * Lectura de un consolidado ESCANEADO, sin capa de texto.
  *
  * No es un comprobante sino la rendición: una tabla con una línea por gasto.
  * Se lee para cruzarla contra los comprobantes registrados y saber qué está
