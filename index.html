@@ -4,116 +4,223 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>InroScan · Contabilidad</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- DM Sans y Sora: las mismas de INRO VIÁTICOS, para que las dos
+     herramientas se lean como una sola familia. -->
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="estilos.css">
 </head>
 <body>
 
-<header>
-  <div class="marca">
-    <h1>InroScan</h1>
-    <span class="area">Contabilidad</span>
+<aside class="lateral solo-dentro">
+  <div class="logo">
+    <span class="logo-marca">Inro</span><span class="logo-fuerte">Scan</span>
+    <span class="rotulo">Contabilidad</span>
   </div>
-  <div class="acciones">
-    <button id="btnClave" class="llave" type="button">
-      Clave IA · <span id="estadoClave">sin configurar</span>
+
+  <nav>
+    <p class="rotulo grupo">Capturar</p>
+    <label class="nav-item principal" for="archivos">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5-5 5 5"/><path d="M12 5v12"/>
+      </svg>
+      Comprobantes
+    </label>
+    <input id="archivos" type="file" multiple accept="image/*,application/pdf" hidden>
+
+    <label class="nav-item solo-movil" for="camara">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/>
+        <circle cx="12" cy="13" r="3.5"/>
+      </svg>
+      Tomar foto
+    </label>
+    <input id="camara" type="file" accept="image/*" capture="environment" hidden>
+
+    <label class="nav-item" for="consolidado">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/>
+      </svg>
+      Consolidado
+      <span class="opcional">cuadre</span>
+    </label>
+    <input id="consolidado" type="file" accept="image/*,application/pdf" hidden>
+
+    <p class="rotulo grupo">Dónde queda</p>
+    <a class="nav-item" id="verCarpeta" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9L9.6 3.9A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
+      </svg>
+      Carpeta en Drive
+    </a>
+    <a class="nav-item" id="verHoja" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/>
+      </svg>
+      Hoja de registro
+    </a>
+    <p class="rotulo grupo">Cómo funciona</p>
+    <button class="nav-item" id="btnAyuda" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="9"/><path d="M9.6 9.5a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.8-.9 1.4v.4"/><path d="M12 17.5h.01"/>
+      </svg>
+      El recorrido
     </button>
-    <span id="quien"></span>
-    <button id="salir" class="texto solo-dentro" type="button">Salir</button>
+  </nav>
+
+  <div class="pie-lateral">
+    <button id="btnClave" class="llave" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="7.5" cy="15.5" r="4.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3"/>
+      </svg>
+      <span class="llave-texto">
+        <b>Clave IA</b>
+        <span id="estadoClave">sin configurar</span>
+      </span>
+    </button>
+    <div class="sesion">
+      <span id="quien"></span>
+      <button id="salir" class="texto" type="button">Salir</button>
+    </div>
   </div>
-</header>
+</aside>
 
-<div id="aviso" class="aviso"></div>
+<div class="lienzo">
 
-<main>
+  <header class="solo-dentro">
+    <div class="titulo">
+      <h1>Digitalización de comprobantes</h1>
+      <p class="sub">Se leen, se revisan, y recién entonces se registran.</p>
+    </div>
+    <div class="derecha">
+      <span id="estadoLote"></span>
+      <button id="cancelar" class="texto malo" type="button" hidden>Cancelar</button>
+      <button id="limpiar" class="texto" type="button">Vaciar</button>
+      <button id="registrar" type="button">Registrar</button>
+    </div>
+  </header>
 
-  <section id="puerta" class="solo-fuera">
-    <h2>Entra con tu cuenta de inroprin.com</h2>
-    <p>
-      Los comprobantes se guardan en la unidad compartida y el registro queda en
-      la hoja de cálculo del área. La herramienta escribe con tu cuenta, así que
-      cada fila lleva el rastro de quién la registró.
-    </p>
-    <button id="entrar" type="button">Entrar con Google</button>
-  </section>
+  <div id="aviso" class="aviso"></div>
 
-  <section id="zona" class="solo-dentro">
-    <div class="barra">
-      <div class="paso">
-        <span class="num">1</span>
-        <div class="cargar">
-          <label class="boton" for="archivos">Cargar comprobantes</label>
-          <input id="archivos" type="file" multiple accept="image/*,application/pdf" hidden>
+  <main>
 
-          <!-- capture abre la cámara nativa del celular. Es más fiable que
-               getUserMedia: no pelea con los permisos de iOS y en escritorio
-               degrada a un selector de archivos. -->
-          <label class="boton sec solo-movil" for="camara">Foto</label>
-          <input id="camara" type="file" accept="image/*" capture="environment" hidden>
+    <section id="puerta" class="solo-fuera">
+      <div class="simbolo">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <path d="M14 2v6h6"/><path d="M8 13h6"/><path d="M8 17h8"/>
+        </svg>
+      </div>
+      <p class="rotulo">InroScan · Contabilidad</p>
+      <h2>Entra con tu cuenta de inroprin.com</h2>
+      <p class="sub">
+        Los comprobantes se guardan en la unidad compartida y el registro queda
+        en la hoja del área. La herramienta escribe con tu cuenta, así que cada
+        fila lleva el rastro de quién la registró.
+      </p>
+      <button id="entrar" type="button">Entrar con Google</button>
+    </section>
+
+    <section id="zona" class="solo-dentro">
+      <div class="barra">
+        <!-- autocomplete off: sin esto Chrome rellena el campo con el correo de
+             la persona, y el correo acaba registrado como nombre de proyecto. -->
+        <input id="proyecto" type="text" placeholder="Proyecto del lote (opcional)"
+               list="proyectos" autocomplete="off">
+        <datalist id="proyectos">
+          <option value="TALLERES ESPECIALIZADOS - PP">
+          <option value="TALLERES EPT I Y II - PP">
+          <option value="CHINA CIVIL PAQ 2">
+          <option value="ADM">
+        </datalist>
+        <p class="pista">
+          Cada página es un comprobante, y si una imagen trae dos boletas juntas
+          se separan en dos filas. El proyecto se aplica al lote y se puede
+          cambiar fila por fila.
+        </p>
+      </div>
+
+      <div id="resumen" class="resumen" hidden></div>
+
+      <div id="cuadre" class="cuadre" hidden></div>
+
+      <div id="vacio" class="vacio marco">
+        <div class="simbolo">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <path d="M7 10l5-5 5 5"/><path d="M12 5v12"/>
+          </svg>
         </div>
+        <h3>Arrastra comprobantes aquí</h3>
+        <p>Imágenes o PDF. Cada página cuenta como un comprobante.</p>
+        <label class="boton" for="archivos">Elegir archivos</label>
+        <p class="chico">
+          ¿Vas a cuadrar contra una rendición? Carga primero los comprobantes y
+          después el consolidado.
+        </p>
       </div>
 
-      <div class="paso opcional">
-        <span class="num">2</span>
-        <label class="boton sec" for="consolidado">Cargar consolidado</label>
-        <input id="consolidado" type="file" accept="image/*,application/pdf" hidden>
-        <span class="chico">opcional, para cuadrar</span>
-      </div>
+      <table id="tabla" hidden>
+        <thead>
+          <tr>
+            <th></th>
+            <th>Tipo</th><th>Serie</th><th>Número</th><th>Fecha</th>
+            <th>RUC</th><th>Proveedor</th><th>Proyecto</th><th>Responsable</th>
+            <th>Descripción</th><th>Importe</th>
+            <th>Estado</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="filas"></tbody>
+      </table>
 
-      <div class="derecha">
-        <span id="estadoLote" class="chico"></span>
-        <button id="cancelar" class="texto malo" type="button" hidden>Cancelar</button>
-        <button id="limpiar" class="texto" type="button">Vaciar</button>
-        <button id="registrar" type="button">Registrar</button>
-      </div>
-    </div>
-
-    <div class="segunda-barra">
-      <!-- autocomplete off: sin esto Chrome rellena el campo con el correo de
-           la persona, y el correo acaba registrado como nombre de proyecto. -->
-      <input id="proyecto" type="text" placeholder="Proyecto del lote (opcional)"
-             list="proyectos" autocomplete="off">
-      <datalist id="proyectos">
-        <option value="TALLERES ESPECIALIZADOS - PP">
-        <option value="TALLERES EPT I Y II - PP">
-        <option value="CHINA CIVIL PAQ 2">
-        <option value="ADM">
-      </datalist>
-      <p class="pista">
-        Cada página es un comprobante, y si una imagen trae dos boletas juntas
-        se separan en dos filas. Nada se guarda hasta que aprietes Registrar.
+      <p class="nota">
+        Revisa antes de registrar: lo ámbar es lo que no se pudo leer. Nada se
+        guarda hasta que aprietes <b>Registrar</b>.
       </p>
-    </div>
+    </section>
 
-    <div id="cuadre" class="cuadre" hidden></div>
+  </main>
+</div>
 
-    <div id="vacio" class="vacio">
-      <p>Todavía no cargaste nada.</p>
-      <p class="chico">
-        El proyecto del lote se aplica a lo que cargues, pero cada fila se puede
-        cambiar. Si luego cargas el consolidado, el proyecto de cada línea manda.
-      </p>
-    </div>
-
-    <table id="tabla" hidden>
-      <thead>
-        <tr>
-          <th></th>
-          <th>Tipo</th><th>Serie</th><th>Número</th><th>Fecha</th>
-          <th>RUC</th><th>Proveedor</th><th>Proyecto</th><th>Responsable</th>
-          <th>Descripción</th><th>Importe</th>
-          <th>Estado</th><th></th>
-        </tr>
-      </thead>
-      <tbody id="filas"></tbody>
-    </table>
-
-    <p class="nota">
-      Revisa antes de registrar: lo amarillo es lo que no se pudo leer. Nada se
-      guarda hasta que aprietes <b>Registrar</b>.
-    </p>
-  </section>
-
-</main>
+<dialog id="dlgAyuda">
+  <h2>El recorrido</h2>
+  <ol class="recorrido">
+    <li>
+      <b>Carga</b>
+      Imágenes o PDF. Cada página es un comprobante, y si una hoja trae dos
+      boletas juntas se separan en dos filas.
+    </li>
+    <li>
+      <b>Primera lectura</b>
+      OCR en tu propio navegador: instantáneo, sin cuota y sin mandar la
+      imagen a ningún lado.
+    </li>
+    <li>
+      <b>Respaldo con IA</b>
+      Solo cuando el OCR no resuelve, o cuando sospecha que hay más de un
+      comprobante en la imagen. Así la cuota se gasta donde aporta.
+    </li>
+    <li>
+      <b>Revisión</b>
+      La tabla es editable y lo ámbar es lo que no se pudo leer. Nada se
+      guarda hasta que aprietes Registrar.
+    </li>
+    <li>
+      <b>Registro</b>
+      La imagen va a la carpeta del día en Drive y la fila a la hoja del
+      área, con el enlace y el rastro de quién la registró.
+    </li>
+    <li>
+      <b>Cuadre <span class="opcional">opcional</span></b>
+      Carga el consolidado de caja chica y se cruza contra lo escaneado:
+      qué líneas tienen sustento, cuáles no, y qué importes no cuadran.
+    </li>
+  </ol>
+  <div class="botones">
+    <button class="sec" type="button" onclick="document.getElementById('dlgAyuda').close()">Entendido</button>
+  </div>
+</dialog>
 
 <dialog id="dlgClave">
   <h2>Clave de Gemini</h2>

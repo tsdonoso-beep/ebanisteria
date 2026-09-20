@@ -128,7 +128,23 @@
   </section>
 
   <section>
-    <h2><span class="n">4</span> Resultado</h2>
+    <h2><span class="n">4</span> Vaciar el registro</h2>
+    <p style="margin:0 0 4px;font-size:14px">
+      Borra las filas de datos de <b>Registro</b> y <b>Consolidados</b>, dejando
+      los encabezados. Es para iterar: se reprocesa el mismo PDF hasta que la
+      lectura salga bien, y entre corrida y corrida conviene partir de cero.
+    </p>
+    <div class="nota">
+      No se puede deshacer, y afecta a la hoja que use todo el equipo. Para
+      confirmar, escribe <b>VACIAR</b>.
+    </div>
+    <input id="confirmar" placeholder="VACIAR" style="max-width:200px;margin-top:12px">
+    <button id="btnVaciar" onclick="vaciarRegistro()" disabled
+            style="background:#b3261e;border-color:#b3261e">Vaciar el registro</button>
+  </section>
+
+  <section>
+    <h2><span class="n">5</span> Resultado</h2>
     <pre id="log"><span class="i">Esperando…</span></pre>
   </section>
 </main>
@@ -340,6 +356,53 @@ function prueba2B() {
       .build()
       .setVisible(true);
   });
+}
+
+// --- vaciar el registro --------------------------------------------------
+
+// Botón armado solo cuando se escribe la palabra: es una acción destructiva
+// sobre la hoja que comparte todo el equipo.
+document.getElementById("confirmar").addEventListener("input", (e) => {
+  document.getElementById("btnVaciar").disabled = e.target.value.trim() !== "VACIAR";
+});
+
+async function vaciarRegistro() {
+  if (!token) return log("Entra primero.", "x");
+  if (!cfg("cfgHoja")) return log("Falta el ID de la hoja.", "x");
+
+  const id = cfg("cfgHoja");
+  log("Vaciando…");
+
+  // A2 en adelante: la fila 1 son los encabezados y se conservan, porque
+  // volver a sembrarlos es un paso extra que se olvida.
+  const rangos = ["Registro!A2:Z", "Consolidados!A2:Z"];
+  let vaciadas = 0;
+
+  for (const rango of rangos) {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${id}/values/` +
+                `${encodeURIComponent(rango)}:clear`;
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: "{}",
+    });
+
+    if (r.ok) {
+      const j = await r.json();
+      log(`${rango.split("!")[0]} → vaciado (${j.clearedRange ?? "sin filas"})`, "v");
+      vaciadas++;
+    } else {
+      const detalle = await detallar(r);
+      // Que falte una pestaña no es un fallo: puede no haberse creado todavía.
+      const falta = /Unable to parse range|not found/i.test(detalle);
+      log(`${rango.split("!")[0]} → ${falta ? "no existe todavía, se omite" : detalle}`,
+          falta ? "i" : "x");
+    }
+  }
+
+  document.getElementById("confirmar").value = "";
+  document.getElementById("btnVaciar").disabled = true;
+  if (vaciadas) log("Listo. La hoja quedó con solo los encabezados.", "v");
 }
 
 // --- prueba 3: Sheets ----------------------------------------------------

@@ -5,7 +5,7 @@
 // revisó, no en lo que apareció solo.
 
 import {
-  PESTANA_REGISTRO, PESTANA_CONSOLIDADO, HEREDABLES,
+  PESTANA_REGISTRO, PESTANA_CONSOLIDADO, HEREDABLES, CARPETA_RAIZ, HOJA,
   getClaveGemini, setClaveGemini, borrarClaveGemini, pareceClaveGemini, enmascarar,
   getProyecto, setProyecto,
 } from "./config.js";
@@ -499,8 +499,45 @@ function pintarCuadre() {
 
 // --- pintado -------------------------------------------------------------
 
+/**
+ * Desglose del lote en cuatro cifras.
+ *
+ * Es el panel que contesta «¿en qué estoy?» sin leer fila por fila. Importa
+ * sobre todo cuando el lote es de veinte o treinta páginas y la tabla ya no
+ * cabe en la pantalla.
+ */
+function pintarResumen() {
+  const caja = $("#resumen");
+  const vivos = comprobantes.filter((c) => c.estado !== "error");
+  if (!vivos.length) { caja.hidden = true; return; }
+  caja.hidden = false;
+
+  const registrados = vivos.filter((c) => c.estado === "registrado").length;
+  const porCompletar = vivos.filter((c) => c.estado === "listo" && !estaCompleto(c.campos)).length;
+  const listos = vivos.filter((c) => c.estado === "listo" && estaCompleto(c.campos)).length;
+  const conIA = vivos.filter((c) => c.via === "ia").length;
+  const suma = vivos.reduce((t, c) => t + (Number(c.campos?.importe) || 0), 0);
+
+  const tarjeta = (valor, titulo, nota, tono = "") => {
+    const d = crear("div", `tarjeta-cifra ${tono}`);
+    d.append(crear("span", "rotulo", titulo), crear("b", "", String(valor)), crear("p", "", nota));
+    return d;
+  };
+
+  caja.replaceChildren(
+    tarjeta(vivos.length, "Comprobantes", `S/ ${suma.toFixed(2)} en total`),
+    tarjeta(conIA, "Leídos con IA", conIA ? "el OCR no resolvió estos" : "los resolvió el OCR, sin cuota"),
+    tarjeta(porCompletar, "Por completar", porCompletar ? "revisa las celdas en ámbar" : "no falta ningún dato",
+            porCompletar ? "ojo" : ""),
+    tarjeta(registrados || listos, registrados ? "Registrados" : "Listos para registrar",
+            registrados ? "ya están en Drive y en la hoja" : "nada se guarda hasta que lo apruebes",
+            registrados ? "bien" : ""),
+  );
+}
+
 function pintar() {
   $("#filas").replaceChildren(...comprobantes.map(filaDe));
+  pintarResumen();
   $("#tabla").hidden = !comprobantes.length;
   $("#vacio").hidden = comprobantes.length > 0;
   pintarCuadre();
@@ -611,6 +648,13 @@ function montar() {
   window.addEventListener("beforeunload", (e) => {
     if (comprobantes.some((c) => c.estado !== "registrado")) e.preventDefault();
   });
+
+  // Adónde va a parar lo que se registra. Estaba a un par de clics en Drive
+  // y en la práctica nadie lo encontraba.
+  $("#verCarpeta").href = `https://drive.google.com/drive/folders/${CARPETA_RAIZ}`;
+  $("#verHoja").href = `https://docs.google.com/spreadsheets/d/${HOJA}/edit`;
+
+  $("#btnAyuda").onclick = () => $("#dlgAyuda").showModal();
 
   pintarClave();
   pintar();
