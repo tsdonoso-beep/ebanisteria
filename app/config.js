@@ -18,7 +18,7 @@
  * Se sube a mano en cada publicación. Es manual a propósito: no hay paso de
  * compilación que la genere, y una versión que miente es peor que ninguna.
  */
-export const VERSION = "2026-09-21b";
+export const VERSION = "2026-09-21c";
 
 export const CLIENT_ID =
   "951030676058-igp95ct69p03lcpt02vtjs79t5dmsrij.apps.googleusercontent.com";
@@ -99,6 +99,66 @@ export const NO_CUENTAN_POR_DEFECTO = TIPOS.filter((t) => !t.cuenta).map((t) => 
 
 export const etiquetaTipo = (id) =>
   TIPOS.find((t) => t.id === id)?.etiqueta ?? id ?? "";
+
+/**
+ * Categorías de gasto que la IA infiere de lo que se compró.
+ *
+ * Son inferencia, no lectura: en el papel no dice «alimentación», dice un
+ * arroz con pollo y una gaseosa. Por eso se muestra siempre y se puede
+ * corregir — es el único campo de la hoja que la herramienta deduce en vez de
+ * copiar, y quien revisa tiene derecho a saberlo.
+ *
+ * La lista es provisional y corta a propósito: diez categorías se eligen de un
+ * vistazo, cuarenta obligan a buscar. Cuando contabilidad comparta su catálogo
+ * real —el que ya usan en el consolidado— hay que reemplazarla por ese; un
+ * vocabulario propio obliga a traducir a mano y no le sirve a nadie.
+ */
+export const CATEGORIAS = [
+  "ALIMENTACIÓN",
+  "TRANSPORTE",
+  "HOSPEDAJE",
+  "COMBUSTIBLE",
+  "PEAJE Y ESTACIONAMIENTO",
+  "MATERIALES Y HERRAMIENTAS",
+  "SERVICIOS",
+  "COMUNICACIONES",
+  "SALUD",
+  "TRÁMITES",
+  "OTROS",
+];
+
+/** Sin tildes, sin mayúsculas y sin espacios de sobra, para comparar. */
+const plano = (t) => String(t ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+  .toUpperCase().replace(/\s+/g, " ").trim();
+
+/**
+ * Lleva lo que dijo la IA al catálogo.
+ *
+ * Sin esto, «Alimentacion», «ALIMENTOS» y «Comida» serían tres categorías
+ * distintas en la hoja y no se podría sumar por ninguna. Lo que no reconoce
+ * cae en OTROS en vez de inventar una categoría nueva: el detalle de qué era
+ * no se pierde, sigue en el concepto.
+ */
+export function normalizarCategoria(valor) {
+  const v = plano(valor);
+  if (!v) return "";
+  const exacta = CATEGORIAS.find((c) => plano(c) === v);
+  if (exacta) return exacta;
+  // Sinónimos que la IA devuelve con frecuencia en vez del rótulo del catálogo.
+  const pistas = [
+    [/COMIDA|ALIMENT|DESAYUN|ALMUERZ|CENA|MENU|RESTAURANT|ABARROTE/, "ALIMENTACIÓN"],
+    [/TAXI|MOVILIDAD|PASAJE|BUS|TRANSPORT|FLETE|MOTOTAXI/, "TRANSPORTE"],
+    [/HOTEL|HOSPEDAJ|ALOJAMIENT/, "HOSPEDAJE"],
+    [/COMBUSTIBL|GASOLINA|PETROLEO|DIESEL|GRIFO/, "COMBUSTIBLE"],
+    [/PEAJE|ESTACIONAMIENT|COCHERA|PARQUE/, "PEAJE Y ESTACIONAMIENTO"],
+    [/MATERIAL|HERRAMIENT|FERRETER|REPUEST|UTILE/, "MATERIALES Y HERRAMIENTAS"],
+    [/SERVICIO|IMPRENTA|COPIA|MENSAJER|LAVAND/, "SERVICIOS"],
+    [/RECARGA|CELULAR|TELEFON|INTERNET|COMUNICAC/, "COMUNICACIONES"],
+    [/SALUD|FARMACI|MEDICAMENT|BOTICA|CLINIC/, "SALUD"],
+    [/TRAMIT|NOTARI|CERTIFICAD|MUNICIPAL|SUNARP/, "TRÁMITES"],
+  ];
+  return pistas.find(([re]) => re.test(v))?.[1] ?? "OTROS";
+}
 
 /** Campos que se heredan del consolidado al comprobante cuando cuadran. */
 export const HEREDABLES = [

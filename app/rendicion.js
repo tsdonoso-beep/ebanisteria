@@ -93,6 +93,11 @@ export function filasDePlantilla(comprobantes) {
       fecha: c.fecha,
       tipo: c.tipo,
       numero: [c.serie, c.numero].filter(Boolean).join("-") || c.numero || "",
+      // El proveedor, el concepto y la categoría ya se leyeron; dejarlos fuera
+      // de la rendición obligaba a abrir cada foto para saber en qué se gastó.
+      proveedor: c.proveedor ?? "",
+      descripcion: c.descripcion ?? "",
+      categoria: c.categoria ?? "",
       importe: dos(aNumero(c.importe)),
       // Para poder enlazar cada fila con su imagen en Drive.
       clave: c.huella ?? [c.serie, c.numero].filter(Boolean).join("-"),

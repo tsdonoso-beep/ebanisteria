@@ -998,6 +998,13 @@ body.dentro #pie { display: flex; }
 .tarjeta-comp .falta { background: var(--warn-bg); border-color: var(--warn-borde); }
 .tarjeta-comp .linea { display: grid; gap: 8px; grid-template-columns: 1fr 1fr 1fr; }
 
+/* El concepto manda sobre la categoría: uno es lo que dice el papel y la otra
+   es una deducción de la herramienta, que además se corrige de un toque. */
+.tarjeta-comp .detalle { grid-template-columns: 1.7fr 1fr; }
+.tarjeta-comp .categoria {
+  font-size: 12.5px; color: var(--text2); background: var(--surface2);
+}
+
 .pie-tarjeta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 /* Mismo distintivo que en la tabla del área, con el mismo nowrap: una
    píldora de radio 99px partida en dos líneas queda como un globo. */
@@ -1021,6 +1028,9 @@ body.dentro #pie { display: flex; }
      importe sí caben en pareja. */
   .tarjeta-comp .linea { grid-template-columns: 1fr 1fr; }
   .tarjeta-comp .linea input:first-child { grid-column: 1 / -1; }
+  /* El concepto es texto libre y se teclea: se queda con el ancho entero. */
+  .tarjeta-comp .detalle { grid-template-columns: 1fr; }
+  .tarjeta-comp .detalle input:first-child { grid-column: auto; }
   .hecho .btn { flex: 1 1 auto; }
 }
 

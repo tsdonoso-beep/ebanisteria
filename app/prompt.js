@@ -29,6 +29,7 @@ Devuelve ÚNICAMENTE un array JSON, sin explicación ni bloque de código:
     "igv": "",
     "importe": "",
     "descripcion": "",
+    "categoria": "",
     "responsable": ""
   }
 ]
@@ -70,7 +71,15 @@ Reglas:
 - "importe" es el total final a pagar, después de descuentos.
 - Los montos van como número con punto decimal, sin símbolo ni separador de
   millar: 1234.50, nunca "S/ 1,234.50".
-- "descripcion" es en pocas palabras qué se compró, si se distingue.
+- "descripcion" es en pocas palabras qué se compró, si se distingue: «almuerzo
+  para dos», «taxi al aeropuerto», «2 kg de pernos». Es el concepto del gasto,
+  y es lo que después permite entender la rendición sin abrir cada foto.
+- "categoria" es el único campo que DEDUCES en vez de leer, y sale de lo que se
+  compró. Elige exactamente uno de estos rótulos, tal cual:
+  ALIMENTACIÓN, TRANSPORTE, HOSPEDAJE, COMBUSTIBLE, PEAJE Y ESTACIONAMIENTO,
+  MATERIALES Y HERRAMIENTAS, SERVICIOS, COMUNICACIONES, SALUD, TRÁMITES, OTROS.
+  Si el comprobante no deja ver qué se compró, usa OTROS: es preferible a
+  adivinar una categoría concreta que suene verosímil y esté mal.
 - "moneda" es "USD" solo si el comprobante lo dice; si no, "PEN".
 
 Si un dato no aparece o no se lee con certeza, déjalo como cadena vacía. NO lo

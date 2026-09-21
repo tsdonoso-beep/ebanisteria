@@ -4,6 +4,8 @@
 // OCR. Es gratis, instantánea y no consume cuota. Cuando no alcanza, el
 // resultado se marca incompleto y recién ahí entra la IA.
 
+import { normalizarCategoria } from "./config.js";
+
 export const VACIO = () => ({
   tipo: "", serie: "", numero: "", fecha: "", ruc: "", proveedor: "",
   proyecto: "", area: "", responsable: "",
@@ -215,6 +217,10 @@ export function desdeIA(obj) {
   c.igv = numero(c.igv);
   c.subtotal = numero(c.subtotal);
   c.moneda = c.moneda === "USD" ? "USD" : "PEN";
+  // La categoría es lo único que la IA deduce, y por eso es lo único que hay
+  // que encarrilar: sin esto «Alimentacion», «ALIMENTOS» y «Comida» serían
+  // tres categorías distintas y no se podría sumar por ninguna.
+  c.categoria = normalizarCategoria(c.categoria);
   return c;
 }
 

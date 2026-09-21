@@ -300,6 +300,37 @@ explícito del usuario. `noCuentan` llega a `calcular()` como parámetro y no co
 constante, precisamente para que el criterio viva en la interfaz y no escondido
 en el código.
 
+### Qué columnas lleva la rendición
+
+`FECHA · TIPO DE DOCUMENTO · N° DOCUMENTO · PROVEEDOR · CONCEPTO · CATEGORÍA ·
+S/ · MONTO · SUSTENTA`.
+
+Las tres del medio se agregaron después, y la razón es que ya estaban leídas:
+la IA extrae proveedor y concepto desde el principio, y dejarlos fuera obligaba
+a abrir foto por foto para saber en qué se gastó. El número de documento enlaza
+a su imagen en Drive.
+
+**La categoría es el único campo que la herramienta deduce en vez de copiar.**
+En el papel no dice «alimentación», dice un arroz con pollo. Por eso:
+
+- Se pide a la IA sobre un catálogo cerrado de once rótulos
+  (`CATEGORIAS` en `config.js`), y se le dice que use `OTROS` antes que
+  adivinar una categoría concreta que suene verosímil y esté mal.
+- Lo que devuelva se encarrila al catálogo con `normalizarCategoria()`. Sin eso
+  «Alimentacion», «ALIMENTOS» y «Comida» serían tres categorías distintas y no
+  se podría sumar por ninguna. Lo no reconocido cae en OTROS; el detalle no se
+  pierde, sigue en el concepto.
+- Se muestra en versalita gris en la hoja y es editable en la tarjeta, porque
+  quien revisa tiene derecho a saber qué es lectura y qué es deducción.
+
+El catálogo es **provisional**: hay que reemplazarlo por el que contabilidad ya
+usa en el consolidado (ver §12).
+
+Las letras de las columnas viven en constantes (`MONTO = "H"`,
+`SUSTENTA = "I"`) y no escritas dentro de cada fórmula: la tabla ya creció una
+vez y el monto pasó de E a H. Con las letras sueltas por el archivo, mover una
+columna es encontrar siete fórmulas y no olvidarse de ninguna.
+
 ### La hoja generada lleva fórmulas vivas, no números congelados
 
 Es una hoja de cálculo: en cuanto alguien corrija el importe de una línea —y va a
@@ -489,10 +520,13 @@ bajaron al pie, porque registrar es el último paso y no tenía peso visual arri
 
 **Técnico:**
 
-4. Hacer determinista el corte de columnas del consolidado, si se comprometen a
+4. **Reemplazar el catálogo de categorías por el real.** Las once de
+   `CATEGORIAS` las inventé yo para que hubiera algo; contabilidad ya tiene el
+   suyo en el consolidado. Un vocabulario propio obliga a traducir a mano.
+5. Hacer determinista el corte de columnas del consolidado, si se comprometen a
    un formato fijo. Hacen falta 2–3 consolidados de meses distintos para
    confirmar que las posiciones son estables.
-5. **Correr la prueba 4 del spike** («Mi unidad»), dos veces y desde dos
+6. **Correr la prueba 4 del spike** («Mi unidad»), dos veces y desde dos
    sesiones. El modo rendidor se apoya en que `drive.file` devuelve al listar
    lo que la propia aplicación creó; es documentación de Google, no algo
    verificado acá. Si no se cumple, la carpeta se duplicaría en cada sesión y

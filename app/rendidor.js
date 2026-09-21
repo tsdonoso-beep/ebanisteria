@@ -17,7 +17,7 @@
 //      puede adivinar y el que después permite que contabilidad la encuentre.
 
 import { CABECERA_VACIA, calcular, faltaParaCerrar } from "./rendicion.js";
-import { TIPOS, NO_CUENTAN_POR_DEFECTO, etiquetaTipo, getClaveGemini } from "./config.js";
+import { TIPOS, CATEGORIAS, NO_CUENTAN_POR_DEFECTO, etiquetaTipo, getClaveGemini } from "./config.js";
 import { aPaginas } from "./paginas.js";
 import { leer, reiniciarAprendizaje } from "./lectura.js";
 import { Cancelado } from "./cola.js";
@@ -155,6 +155,12 @@ async function guardar() {
   const vivos = leidos.filter((c) => c.campos);
   const falta = faltaParaCerrar(datos, vivos);
   if (falta.length) return api.avisar(`Falta ${falta.join(", ")}.`, "malo");
+
+  // Se fija acá y no al abrir la pantalla: la rendición se fecha el día en que
+  // se produce. Abriendo la herramienta el lunes y guardando el jueves, la
+  // fecha correcta es la del jueves, y además así no queda vacía si antes se
+  // apretó «Empezar de nuevo», que es como salió en blanco la primera vez.
+  datos.fechaRendicion = fechaCarpeta();
 
   api.ocupado(true);
   try {
@@ -336,11 +342,7 @@ function pintarTarjetas() {
     sel.onchange = () => { c.campos.tipo = sel.value; c.via = "manual"; pintar(); };
     cuerpo.append(sel);
 
-    const linea = crear("div", "linea");
-    for (const [campo, etiqueta, tipo] of [
-      ["fecha", "Fecha", "date"], ["numero", "N° de documento", "text"],
-      ["importe", "Importe S/", "number"],
-    ]) {
+    const entrada = (campo, etiqueta, tipo) => {
       const i = crear("input");
       i.type = tipo;
       i.placeholder = etiqueta;
@@ -354,10 +356,39 @@ function pintarTarjetas() {
         i.classList.toggle("falta", faltantes(c.campos).includes(campo));
         pintarCifras();
         pintarCierre();
+        pintarPasos();
       };
-      linea.append(i);
-    }
+      return i;
+    };
+
+    const linea = crear("div", "linea");
+    linea.append(
+      entrada("fecha", "Fecha", "date"),
+      entrada("numero", "N° de documento", "text"),
+      entrada("importe", "Importe S/", "number"),
+    );
     cuerpo.append(linea);
+
+    // El concepto y la categoría ya se leyeron o se dedujeron: mostrarlos acá
+    // es lo que permite revisar la rendición sin abrir foto por foto, y
+    // corregir la categoría en el sitio en vez de en la hoja después.
+    const detalle = crear("div", "linea detalle");
+    detalle.append(entrada("descripcion", "Concepto: qué se compró", "text"));
+
+    const cat = crear("select", "categoria");
+    cat.setAttribute("aria-label", "Categoría del gasto");
+    const vacia = crear("option", "", "Sin categoría");
+    vacia.value = "";
+    cat.append(vacia);
+    for (const nombre of CATEGORIAS) {
+      const o = crear("option", "", nombre);
+      o.value = nombre;
+      if (c.campos.categoria === nombre) o.selected = true;
+      cat.append(o);
+    }
+    cat.onchange = () => { c.campos.categoria = cat.value; c.via = "manual"; };
+    detalle.append(cat);
+    cuerpo.append(detalle);
 
     const pie = crear("div", "pie-tarjeta");
     if (c.fallo) pie.append(crear("span", "alerta", "no se pudo leer: complétalo"));

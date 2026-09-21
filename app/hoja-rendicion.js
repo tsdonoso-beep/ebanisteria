@@ -11,6 +11,19 @@ import { calcular, filasDePlantilla } from "./rendicion.js";
 
 const UNIDADES = "supportsAllDrives=true&includeItemsFromAllDrives=true";
 
+/**
+ * Las columnas de la tabla, por letra.
+ *
+ * Están en constantes y no escritas dentro de cada fórmula porque la tabla ya
+ * creció una vez: al añadir proveedor, concepto y categoría, el monto pasó de
+ * E a H y el sustento de F a I. Con las letras sueltas por el archivo, mover
+ * una columna es encontrar siete fórmulas y no olvidarse de ninguna.
+ */
+const MONTO = "H";
+const SUSTENTA = "I";
+/** Cuántas columnas ocupa la tabla, para el formato. */
+const ANCHO = 9;
+
 /** dd/mm/aaaa, que es como se lee en el papel. */
 function aPapel(iso) {
   const m = String(iso ?? "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -137,19 +150,23 @@ function bloqueCabecera(cab, cuentas, rangos, s) {
   // celda queda vacía en vez de mostrar un error de hoja de cálculo.
   const pct = `=IF(C4=0${s}""${s}TEXT(C5/C4${s}"0%")&" RENDIDO")`;
 
+  // Un campo sin llenar tiene que quedar en blanco, no escribir «null»: en una
+  // hoja que alguien firma, esa palabra parece un error del sistema.
+  const t = (v) => (v == null ? "" : String(v));
+
   return [
-    ["MEMORANDUM N°", cab.memo, "", ""],
+    ["MEMORANDUM N°", t(cab.memo), "", ""],
     ["FECHA DE RENDICIÓN", aPapel(cab.fechaRendicion), "", ""],
     ["", "", "", ""],
     ["MONTO RECIBIDO:", "S/", num(cuentas.recibido), ""],
     ["MONTO RENDIDO:", "S/", rangos.sustentado, pct],
     ["", "", "", ""],
-    ["PROYECTO:", cab.proyecto, "", ""],
+    ["PROYECTO:", t(cab.proyecto), "", ""],
     ["", "", "", ""],
-    ["NOMBRES:", cab.nombres, "", ""],
-    ["APELLIDOS:", cab.apellidos, "", ""],
-    ["DNI:", cab.dni, "", ""],
-    ["ORIGEN Y DESTINO DE VIAJE:", cab.origenDestino, "", ""],
+    ["NOMBRES:", t(cab.nombres), "", ""],
+    ["APELLIDOS:", t(cab.apellidos), "", ""],
+    ["DNI:", t(cab.dni), "", ""],
+    ["ORIGEN Y DESTINO DE VIAJE:", t(cab.origenDestino), "", ""],
     ["PERIODO DE VIAJE:", periodo, "", ""],
     ["", "", "", ""],
   ];
@@ -193,12 +210,13 @@ export async function generar({ cabecera, comprobantes, noCuentan, idCarpeta, en
 
   const rangos = filas.length
     ? {
-        total: `=SUM(E${primera}:E${ultima})`,
-        // La columna F guarda si esa línea sustenta. Sumar con SUMIF en vez de
-        // fijar el número deja que el criterio siga vivo: cambiar una celda de
-        // «no» a «sí» recalcula el monto rendido y el porcentaje al instante.
-        sustentado: `=SUMIF(F${primera}:F${ultima}${s}"sí"${s}E${primera}:E${ultima})`,
-        sinSustentar: `=SUMIF(F${primera}:F${ultima}${s}"no"${s}E${primera}:E${ultima})`,
+        total: `=SUM(${MONTO}${primera}:${MONTO}${ultima})`,
+        // La columna SUSTENTA guarda si esa línea cuenta. Sumar con SUMIF en
+        // vez de fijar el número deja que el criterio siga vivo: cambiar una
+        // celda de «no» a «sí» recalcula el monto rendido y el porcentaje al
+        // instante.
+        sustentado: `=SUMIF(${SUSTENTA}${primera}:${SUSTENTA}${ultima}${s}"sí"${s}${MONTO}${primera}:${MONTO}${ultima})`,
+        sinSustentar: `=SUMIF(${SUSTENTA}${primera}:${SUSTENTA}${ultima}${s}"no"${s}${MONTO}${primera}:${MONTO}${ultima})`,
       }
     : { total: 0, sustentado: 0, sinSustentar: 0 };
 
@@ -210,26 +228,36 @@ export async function generar({ cabecera, comprobantes, noCuentan, idCarpeta, en
       // El número enlaza a la imagen en Drive: quien revise la rendición llega
       // al papel con un clic, en vez de buscarlo en una carpeta.
       enlace ? `=HYPERLINK("${enlace}"${s}"${f.numero}")` : f.numero,
+      f.proveedor,
+      f.descripcion,
+      f.categoria,
       "S/",
       num(f.importe),
       excluidos.has(f.tipo) ? "no" : "sí",
     ];
   });
 
+  // La fila del total queda justo debajo de la última: es a la que apuntan el
+  // saldo y el reembolso.
+  const filaTotal = ultima + 1;
+  const hueco = (rotulo, valor) => [rotulo, "", "", "", "", "", "S/", valor, ""];
+
   const cierre = [
-    ["", "", "", "S/", rangos.total, ""],
-    ["", "", "", "", "", ""],
-    ["No sustenta", "", "", "S/", rangos.sinSustentar, ""],
+    hueco("", rangos.total),
+    ["", "", "", "", "", "", "", "", ""],
+    hueco("No sustenta", rangos.sinSustentar),
     // El saldo también es fórmula, y su signo decide el rótulo en la hoja.
-    [filas.length
-      ? `=IF(C4-E${ultima + 1}>0${s}"Saldo por devolver"${s}IF(C4-E${ultima + 1}<0${s}"Reembolso a favor"${s}"Saldo"))`
-      : "Saldo",
-     "", "", "S/", filas.length ? `=ABS(C4-E${ultima + 1})` : 0, ""],
+    hueco(
+      filas.length
+        ? `=IF(C4-${MONTO}${filaTotal}>0${s}"Saldo por devolver"${s}IF(C4-${MONTO}${filaTotal}<0${s}"Reembolso a favor"${s}"Saldo"))`
+        : "Saldo",
+      filas.length ? `=ABS(C4-${MONTO}${filaTotal})` : 0),
   ];
 
   const valores = [
     ...bloqueCabecera(cabecera, cuentas, rangos, s),
-    ["FECHA", "TIPO DE DOCUMENTO", "N° DOCUMENTO", "", "MONTO", "SUSTENTA"],
+    ["FECHA", "TIPO DE DOCUMENTO", "N° DOCUMENTO", "PROVEEDOR", "CONCEPTO",
+     "CATEGORÍA", "", "MONTO", "SUSTENTA"],
     ...filasTabla,
     ...cierre,
     ["", "", "", "", "", ""],
@@ -258,6 +286,7 @@ async function darFormato(idHoja, filasCabecera, filasTabla) {
   const encabezadoTabla = filasCabecera;          // fila 0-indexada de FECHA/TIPO/…
   const primeraFila = encabezadoTabla + 1;
   const ultimaFila = primeraFila + filasTabla + 4;
+  const colMonto = MONTO.charCodeAt(0) - 65;      // «H» → 7
 
   const peticiones = [
     // Rótulos de la cabecera en negrita.
@@ -267,7 +296,7 @@ async function darFormato(idHoja, filasCabecera, filasTabla) {
       fields: "userEnteredFormat.textFormat.bold" } },
     // Cabecera de la tabla: negrita sobre fondo suave.
     { repeatCell: {
-      range: { sheetId: 0, startRowIndex: encabezadoTabla, endRowIndex: primeraFila, startColumnIndex: 0, endColumnIndex: 5 },
+      range: { sheetId: 0, startRowIndex: encabezadoTabla, endRowIndex: primeraFila, startColumnIndex: 0, endColumnIndex: ANCHO },
       cell: { userEnteredFormat: {
         textFormat: { bold: true },
         backgroundColor: { red: 0.965, green: 0.973, blue: 0.980 },
@@ -276,7 +305,7 @@ async function darFormato(idHoja, filasCabecera, filasTabla) {
     // Los montos con dos decimales y a la derecha: una columna de cifras solo
     // se compara de un vistazo si la coma decimal cae siempre en el mismo sitio.
     { repeatCell: {
-      range: { sheetId: 0, startRowIndex: 0, endRowIndex: ultimaFila, startColumnIndex: 4, endColumnIndex: 5 },
+      range: { sheetId: 0, startRowIndex: 0, endRowIndex: ultimaFila, startColumnIndex: colMonto, endColumnIndex: colMonto + 1 },
       cell: { userEnteredFormat: {
         numberFormat: { type: "NUMBER", pattern: "#,##0.00" },
         horizontalAlignment: "RIGHT",
@@ -289,12 +318,26 @@ async function darFormato(idHoja, filasCabecera, filasTabla) {
         textFormat: { bold: true },
       } },
       fields: "userEnteredFormat(numberFormat,textFormat)" } },
-    { updateDimensionProperties: {
-      range: { sheetId: 0, dimension: "COLUMNS", startIndex: 0, endIndex: 1 },
-      properties: { pixelSize: 210 }, fields: "pixelSize" } },
-    { updateDimensionProperties: {
-      range: { sheetId: 0, dimension: "COLUMNS", startIndex: 1, endIndex: 3 },
-      properties: { pixelSize: 170 }, fields: "pixelSize" } },
+    // El concepto es texto libre y puede ser largo: se ajusta en la celda en
+    // vez de desbordar sobre la categoría o quedar cortado.
+    { repeatCell: {
+      range: { sheetId: 0, startRowIndex: primeraFila, endRowIndex: ultimaFila, startColumnIndex: 4, endColumnIndex: 5 },
+      cell: { userEnteredFormat: { wrapStrategy: "WRAP", verticalAlignment: "TOP" } },
+      fields: "userEnteredFormat(wrapStrategy,verticalAlignment)" } },
+    // La categoría es deducida, no leída: va en versalita gris para que no se
+    // lea con el mismo peso que lo que sí está impreso en el papel.
+    { repeatCell: {
+      range: { sheetId: 0, startRowIndex: primeraFila, endRowIndex: ultimaFila, startColumnIndex: 5, endColumnIndex: 6 },
+      cell: { userEnteredFormat: {
+        textFormat: { fontSize: 9, foregroundColor: { red: 0.32, green: 0.38, blue: 0.48 } },
+      } },
+      fields: "userEnteredFormat.textFormat" } },
+    ...[[0, 1, 95], [1, 2, 150], [2, 3, 130], [3, 4, 190], [4, 5, 240], [5, 6, 165],
+        [6, 7, 36], [7, 8, 105], [8, 9, 85]].map(([desde, hasta, ancho]) => ({
+      updateDimensionProperties: {
+        range: { sheetId: 0, dimension: "COLUMNS", startIndex: desde, endIndex: hasta },
+        properties: { pixelSize: ancho }, fields: "pixelSize",
+      } })),
   ];
 
   const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${idHoja}:batchUpdate`, {

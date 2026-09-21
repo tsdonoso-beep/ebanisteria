@@ -717,7 +717,7 @@ async function generarRendicion() {
 
 const CAMPOS_TABLA = [
   "tipo", "serie", "numero", "fecha", "ruc", "proveedor",
-  "proyecto", "responsable", "descripcion", "importe",
+  "proyecto", "responsable", "categoria", "descripcion", "importe",
 ];
 
 const ETIQUETA_VIA = { ocr: "OCR", ia: "IA", parcial: "incompleto", manual: "editado" };
