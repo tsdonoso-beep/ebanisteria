@@ -37,7 +37,8 @@ export const CABECERA_VACIA = () => ({
 export function calcular(comprobantes, cabecera, noCuentan = NO_CUENTAN_POR_DEFECTO) {
   const excluidos = new Set(noCuentan);
   const vivos = comprobantes.filter((c) => c?.importe !== undefined || c?.campos);
-  const campos = vivos.map((c) => c.campos ?? c);
+  // Se conserva la huella al aplanar: es lo que después enlaza fila e imagen.
+  const campos = vivos.map((c) => (c.campos ? { ...c.campos, huella: c.huella } : c));
 
   const recibido = aNumero(cabecera?.montoRecibido);
   const total = campos.reduce((t, c) => t + aNumero(c.importe), 0);
@@ -90,6 +91,8 @@ export function filasDePlantilla(comprobantes) {
       tipo: c.tipo,
       numero: [c.serie, c.numero].filter(Boolean).join("-") || c.numero || "",
       importe: dos(aNumero(c.importe)),
+      // Para poder enlazar cada fila con su imagen en Drive.
+      clave: c.huella ?? [c.serie, c.numero].filter(Boolean).join("-"),
     }));
 }
 

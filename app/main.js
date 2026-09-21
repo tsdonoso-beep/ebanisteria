@@ -554,9 +554,27 @@ async function generarRendicion() {
   const listos = comprobantes.filter((c) => c.estado !== "error" && c.campos);
   ocupado(true);
   try {
-    avisar("Creando la hoja de la rendición…", "trabajando");
     const idCarpeta = await carpetaDelDia();
-    const hecho = await generar({ cabecera, comprobantes: listos, noCuentan, idCarpeta });
+
+    // Las imágenes suben antes que la hoja: una rendición sin los papeles
+    // detrás no sustenta nada, y así cada fila puede enlazar al suyo.
+    const enlaces = {};
+    const subidos = new Map();
+    for (const [i, c] of listos.entries()) {
+      avisar(`Subiendo el sustento ${i + 1} de ${listos.length}…`, "trabajando");
+      if (!subidos.has(c.huella)) {
+        const nombre = [
+          c.campos.fecha || fechaCarpeta(),
+          claveDe(c.campos) || c.huella.slice(0, 8),
+        ].join("_") + ".jpg";
+        subidos.set(c.huella, (await subir(c.blob, nombre, idCarpeta)).webViewLink);
+      }
+      enlaces[c.huella] = subidos.get(c.huella);
+      c.enlace = subidos.get(c.huella);
+    }
+
+    avisar("Creando la hoja de la rendición…", "trabajando");
+    const hecho = await generar({ cabecera, comprobantes: listos, noCuentan, idCarpeta, enlaces });
 
     avisar(`Rendición creada: ${hecho.nombre}`, "bueno");
     // Se abre sola: el trabajo termina en esa hoja, no en esta pantalla.

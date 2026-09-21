@@ -44,18 +44,41 @@ async function crearHoja(nombre, idCarpeta) {
   return r.json();
 }
 
-/** Las celdas de la cabecera, en el orden de la plantilla. */
-function bloqueCabecera(cab, cuentas) {
-  const pct = cuentas.porcentaje === null ? "" : `${cuentas.porcentaje}% RENDIDO`;
+/** es_PE: separador «;» en las fórmulas, y fechas y moneda como acá. */
+async function fijarIdioma(idHoja) {
+  const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${idHoja}:batchUpdate`, {
+    method: "POST",
+    headers: await cabeceras({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ requests: [{ updateSpreadsheetProperties: {
+      properties: { locale: "es_PE", timeZone: "America/Lima" },
+      fields: "locale,timeZone",
+    } }] }),
+  });
+  if (!r.ok) throw new Error(`Sheets [${r.status}]: ${await motivo(r)}`);
+}
+
+/**
+ * Las celdas de la cabecera, en el orden de la plantilla.
+ *
+ * Los totales van como FÓRMULAS y no como números. Es una hoja de cálculo: en
+ * cuanto alguien corrija el importe de una línea —y va a corregirlo, para eso
+ * se revisa— un total escrito a mano quedaría mintiendo sin avisar. Con
+ * fórmulas, corregir una línea recalcula el total y el porcentaje solos.
+ */
+function bloqueCabecera(cab, cuentas, rangos) {
   const periodo = [aPapel(cab.periodoDesde), aPapel(cab.periodoHasta)]
     .filter(Boolean).join(" al ");
+
+  // El porcentaje se protege de la división por cero: sin monto recibido, la
+  // celda queda vacía en vez de mostrar un error de hoja de cálculo.
+  const pct = `=IF(C4=0;"";TEXT(C5/C4;"0%")&" RENDIDO")`;
 
   return [
     ["MEMORANDUM N°", cab.memo, "", ""],
     ["FECHA DE RENDICIÓN", aPapel(cab.fechaRendicion), "", ""],
     ["", "", "", ""],
     ["MONTO RECIBIDO:", "S/", num(cuentas.recibido), ""],
-    ["MONTO RENDIDO:", "S/", num(cuentas.sustentado), pct],
+    ["MONTO RENDIDO:", "S/", rangos.sustentado, pct],
     ["", "", "", ""],
     ["PROYECTO:", cab.proyecto, "", ""],
     ["", "", "", ""],
@@ -75,9 +98,10 @@ function bloqueCabecera(cab, cuentas) {
  * más de lo recibido hay un reembolso a favor de la persona, y si sobró hay
  * una devolución. En el papel esa cifra había que sacarla mentalmente.
  */
-export async function generar({ cabecera, comprobantes, noCuentan, idCarpeta }) {
+export async function generar({ cabecera, comprobantes, noCuentan, idCarpeta, enlaces = {} }) {
   const cuentas = calcular(comprobantes, cabecera, noCuentan);
   const filas = filasDePlantilla(comprobantes);
+  const excluidos = new Set(noCuentan ?? []);
 
   const nombre = [
     "RENDICION",
@@ -87,25 +111,60 @@ export async function generar({ cabecera, comprobantes, noCuentan, idCarpeta }) 
 
   const hoja = await crearHoja(nombre, idCarpeta);
 
-  const filasTabla = filas.map((f) => [
-    aPapel(f.fecha), etiquetaTipo(f.tipo), f.numero, "S/", num(f.importe),
-  ]);
+  // El idioma se fija ANTES de escribir, y no es cosmético: decide si las
+  // fórmulas se separan con coma o con punto y coma. Escribirlas primero y
+  // cambiar el idioma después las dejaría rotas, porque se interpretan al
+  // escribirse. Con es_PE el separador es «;», que es el que usan las de
+  // abajo.
+  await fijarIdioma(hoja.id);
 
-  const saldo = num(cuentas.saldo);
+  // Se calculan antes las filas donde caerá la tabla, porque las fórmulas del
+  // total necesitan saber su rango y la cabecera va escrita más arriba.
+  const ALTO_CABECERA = 14;
+  const filaEncabezado = ALTO_CABECERA + 1;         // 1-indexada, como en la hoja
+  const primera = filaEncabezado + 1;
+  const ultima = primera + filas.length - 1;
+
+  const rangos = filas.length
+    ? {
+        total: `=SUM(E${primera}:E${ultima})`,
+        // La columna F guarda si esa línea sustenta. Sumar con SUMIF en vez de
+        // fijar el número deja que el criterio siga vivo: cambiar una celda de
+        // «no» a «sí» recalcula el monto rendido y el porcentaje al instante.
+        sustentado: `=SUMIF(F${primera}:F${ultima};"sí";E${primera}:E${ultima})`,
+        sinSustentar: `=SUMIF(F${primera}:F${ultima};"no";E${primera}:E${ultima})`,
+      }
+    : { total: 0, sustentado: 0, sinSustentar: 0 };
+
+  const filasTabla = filas.map((f) => {
+    const enlace = enlaces[f.clave];
+    return [
+      aPapel(f.fecha),
+      etiquetaTipo(f.tipo),
+      // El número enlaza a la imagen en Drive: quien revise la rendición llega
+      // al papel con un clic, en vez de buscarlo en una carpeta.
+      enlace ? `=HYPERLINK("${enlace}";"${f.numero}")` : f.numero,
+      "S/",
+      num(f.importe),
+      excluidos.has(f.tipo) ? "no" : "sí",
+    ];
+  });
+
   const cierre = [
-    ["", "", "", "S/", num(cuentas.total)],
-    ["", "", "", "", ""],
-    ["No sustenta (declaraciones juradas)", "", "", "S/", num(cuentas.sinSustentar)],
-    [saldo > 0 ? "Saldo por devolver" : saldo < 0 ? "Reembolso a favor" : "Saldo",
-     "", "", "S/", Math.abs(saldo)],
+    ["", "", "", "S/", rangos.total, ""],
+    ["", "", "", "", "", ""],
+    ["No sustenta", "", "", "S/", rangos.sinSustentar, ""],
+    // El saldo también es fórmula, y su signo decide el rótulo en la hoja.
+    [filas.length ? `=IF(C4-E${ultima + 1}>0;"Saldo por devolver";IF(C4-E${ultima + 1}<0;"Reembolso a favor";"Saldo"))` : "Saldo",
+     "", "", "S/", filas.length ? `=ABS(C4-E${ultima + 1})` : 0, ""],
   ];
 
   const valores = [
-    ...bloqueCabecera(cabecera, cuentas),
-    ["FECHA", "TIPO DE DOCUMENTO", "N° DOCUMENTO", "", "MONTO"],
+    ...bloqueCabecera(cabecera, cuentas, rangos),
+    ["FECHA", "TIPO DE DOCUMENTO", "N° DOCUMENTO", "", "MONTO", "SUSTENTA"],
     ...filasTabla,
     ...cierre,
-    ["", "", "", "", ""],
+    ["", "", "", "", "", ""],
     [`Generado por InroScan · ${sesion()?.correo ?? ""} · ${new Date().toLocaleString("es-PE")}`],
   ];
 
@@ -118,7 +177,7 @@ export async function generar({ cabecera, comprobantes, noCuentan, idCarpeta }) 
   });
   if (!r.ok) throw new Error(`Sheets [${r.status}]: ${await motivo(r)}`);
 
-  await darFormato(hoja.id, bloqueCabecera(cabecera, cuentas).length, filasTabla.length);
+  await darFormato(hoja.id, ALTO_CABECERA, filasTabla.length);
   return { ...hoja, cuentas, nombre };
 }
 
