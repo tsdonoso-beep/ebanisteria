@@ -73,17 +73,18 @@ transcripción.
 
 ---
 
-## 4. El 2×2 que organiza la interfaz
+## 4. Las tres intenciones × dos procesos
 
 Al entrar, la herramienta pregunta dos cosas antes de mostrar nada
 (`app/config.js` → `INTENCIONES` y `PROCESOS`):
 
 **Intención** — a qué vino la persona:
 
-| id | Título | Área |
-|---|---|---|
-| `revalidar` | Revalidar una rendición | Contabilidad |
-| `digitalizar` | Digitalizar comprobantes | Administración |
+| id | Título | Área | Dónde escribe |
+|---|---|---|---|
+| `revalidar` | Revalidar una rendición | Contabilidad | unidad compartida |
+| `digitalizar` | Digitalizar comprobantes | Administración | unidad compartida |
+| `rendir` | Rendir mis gastos | Quien viaja | **su propio Drive** |
 
 **Proceso** — qué tipo de gasto es:
 
@@ -101,6 +102,34 @@ caja chica y viáticos («*igual sí consideraría la diferenciación*»).
 La opción elegida para viáticos fue la **B**: InroScan **genera la rendición
 completa** para Annie, no solo digitaliza piezas sueltas. El resultado es una
 **hoja de Google**, elegida por el usuario.
+
+### El tercero: el rendidor (`rendir`)
+
+Se agregó después, y no es una variante de los otros dos: es la persona que
+gastó, con el teléfono en la mano, fotografiando conforme le dan los papeles.
+Tiene su propia vista (`app/rendidor.js`) y tres diferencias de fondo:
+
+1. **Se captura primero y se lee después.** En la calle nadie espera medio
+   minuto por foto a que el OCR y la IA terminen. Se junta todo y se extrae de
+   una sentada, con señal — de ahí el botón explícito «Extraer con IA» en vez
+   de una lectura automática al soltar el archivo.
+2. **Todo nace en «Mi unidad» de la persona**, con ella de dueña
+   (`app/mi-unidad.js`): una carpeta `InroScan · Mis rendiciones`, y dentro
+   una por número de memo con las fotos y la hoja. No toca la unidad
+   compartida ni la hoja del área, a las que puede no tener acceso. Contabilidad
+   la ve cuando la persona la comparte, no antes.
+3. **El número de memo lo escribe ella.** Es el único dato que la herramienta
+   no puede adivinar, y es por donde contabilidad la encuentra después.
+
+Se reconoce abiertamente que esto es territorio de INRO VIÁTICOS. Está acá
+como demostración de capacidad, no como reemplazo — lo que agrava la decisión
+pendiente del §12.3, porque el solape ya no es solo con Annie sino con el
+rendidor.
+
+**Consecuencia técnica de tener a alguien sin acceso al área:** la hoja
+compartida ya no se prepara al entrar sino al elegir un modo del área
+(`asegurarRegistro()` en `main.js`). Antes, un error de permisos nada más
+entrar dejaba fuera a quien sí podía usar la herramienta.
 
 ---
 
@@ -306,6 +335,8 @@ Y cada número de documento enlaza a su imagen en Drive:
 | `app/auth.js` | 100 | GIS, alcances, `tokenVigente()` con refresco 60 s antes de expirar |
 | `app/paginas.js` | 82 | Parte PDFs en páginas, normaliza imágenes, calcula la huella |
 | `app/texto-pdf.js` | 71 | Reconstruye filas desde la capa de texto |
+| `app/rendidor.js` | — | La vista de quien gastó: captura, extrae, guarda en su Drive |
+| `app/mi-unidad.js` | — | Carpeta propia por memo en «Mi unidad» |
 | `app/lectura.js` | 366 | Orquesta la cascada; `unificarRepetidos()` |
 | `app/campos.js` | 229 | Extracción por expresiones regulares; `clave()`; `desdeIA()` |
 | `app/prompt.js` | 178 | Los tres prompts |
@@ -379,6 +410,7 @@ repetirlo.
 | «Subo el consolidado y no pasa nada» | Sí avisaba, pero el aviso se esconde a los 7 s en lo alto de una página larga | Ahora abre el diálogo de la clave explicando, y marca «falta clave» en la lateral |
 | La rendición mentía si se editaba una línea | Totales escritos como valores | Fórmulas vivas + columna SUSTENTA |
 | La rendición no tenía sustento adjunto | Las imágenes no se subían en ese flujo | Se suben y cada fila enlaza a la suya |
+| Los enlaces de la rendición no habrían funcionado nunca | `filasDePlantilla()` aplanaba a `campos` y perdía la huella; la fila quedaba con clave `serie-número` mientras los enlaces se guardaban por huella | Se conserva la huella al aplanar. Encontrado al construir el modo rendidor, antes de llegar a producción |
 
 ### Sobre la cascada de CSS, dos reglas aprendidas
 
@@ -443,10 +475,16 @@ bajaron al pie, porque registrar es el último paso y no tenía peso visual arri
 4. Hacer determinista el corte de columnas del consolidado, si se comprometen a
    un formato fijo. Hacen falta 2–3 consolidados de meses distintos para
    confirmar que las posiciones son estables.
+5. **Correr la prueba 4 del spike** («Mi unidad»), dos veces y desde dos
+   sesiones. El modo rendidor se apoya en que `drive.file` devuelve al listar
+   lo que la propia aplicación creó; es documentación de Google, no algo
+   verificado acá. Si no se cumple, la carpeta se duplicaría en cada sesión y
+   habría que anotar su ID como se hizo con las carpetas del día.
 
 **Nunca ejercitado contra la infraestructura real** (solo verificado en Node):
 crear la hoja, fijar el idioma, escribir las fórmulas y subir las imágenes del
-flujo de rendición. Es lo primero que hay que probar de punta a punta.
+flujo de rendición; y todo el modo rendidor, incluida la creación de la carpeta
+en «Mi unidad». Es lo primero que hay que probar de punta a punta.
 
 ---
 

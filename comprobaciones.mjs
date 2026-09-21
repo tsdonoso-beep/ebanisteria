@@ -5,12 +5,17 @@
 //
 //   node comprobaciones.mjs
 
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 
 const raiz = new URL(".", import.meta.url).pathname;
 const css = readFileSync(raiz + "estilos.css", "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
 const html = readFileSync(raiz + "index.html", "utf8");
-const js = readFileSync(raiz + "app/main.js", "utf8");
+// Todos los módulos, no solo main.js: la vista del rendidor vive aparte y
+// sus ids y sus botones se equivocan igual de fácil.
+const js = readdirSync(raiz + "app")
+  .filter((f) => f.endsWith(".js"))
+  .map((f) => readFileSync(`${raiz}app/${f}`, "utf8"))
+  .join("\n");
 
 const reglas = [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)]
   .map((m) => ({ sel: m[1].trim(), cuerpo: m[2] }))

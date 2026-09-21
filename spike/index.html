@@ -122,9 +122,15 @@
       <b>2B</b> — Si 2A falla con 404, elegir la carpeta con Picker y reintentar.
       Un 404 acá significa «no autorizado», no «no existe».
     </p>
+    <p style="margin:0;font-size:14px;color:var(--suave)">
+      <b>4</b> — Crear una carpeta en «Mi unidad» y volver a encontrarla al
+      listar. Es lo que sostiene el modo rendidor: si el listado no la
+      devuelve, cada sesión crearía una carpeta nueva y se duplicarían.
+    </p>
     <button id="btn2a" onclick="prueba2A()" disabled>Probar 2A · ID directo</button>
     <button id="btn2b" class="sec" onclick="prueba2B()" disabled>Probar 2B · Picker</button>
     <button id="btn3" class="sec" onclick="prueba3()" disabled>Probar 3 · Fila en Sheets</button>
+    <button id="btn4" class="sec" onclick="prueba4()" disabled>Probar 4 · Mi unidad</button>
   </section>
 
   <section>
@@ -240,7 +246,7 @@ function entrar() {
       token = resp.access_token;
       log("Token obtenido.", "v");
       await mostrarQuien();
-      ["btn2a", "btn2b", "btn3"].forEach(b => document.getElementById(b).disabled = false);
+      ["btn2a", "btn2b", "btn3", "btn4"].forEach(b => document.getElementById(b).disabled = false);
     },
   });
   cliente.requestAccessToken();
@@ -319,6 +325,57 @@ async function prueba2A() {
     log("VEREDICTO 2A: no alcanzó. Si el error fue 404 o «File not found», " +
         "es el límite esperado de drive.file — probá 2B.", "x");
   }
+}
+
+// --- prueba 4: carpeta propia en Mi unidad -------------------------------
+//
+// drive.file solo devuelve al listar lo que la propia aplicación creó para
+// esta persona. Si esa promesa se cumple entre sesiones, la carpeta del
+// rendidor se encuentra la segunda vez y no se duplica. Si no, hay que
+// anotar su ID en algún lado, como se hizo con las carpetas del día.
+
+const CARPETA_MIME = "application/vnd.google-apps.folder";
+
+async function buscarCarpeta(nombre) {
+  const q = `name='${nombre}' and mimeType='${CARPETA_MIME}' and trashed=false and 'root' in parents`;
+  const r = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)`,
+    { headers: { Authorization: `Bearer ${token}` } });
+  if (!r.ok) { log(`   listado → HTTP ${r.status}: ${await detallar(r)}`, "x"); return null; }
+  return (await r.json()).files ?? [];
+}
+
+async function prueba4() {
+  const nombre = "InroScan · prueba";
+  log("Prueba 4 — carpeta en «Mi unidad», crear y volver a encontrar…");
+
+  const antes = await buscarCarpeta(nombre);
+  if (antes === null) return;
+  log(`   antes de crear, el listado devuelve ${antes.length}`, "i");
+
+  if (!antes.length) {
+    const r = await fetch("https://www.googleapis.com/drive/v3/files?fields=id,name", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ name: nombre, mimeType: CARPETA_MIME }),
+    });
+    if (!r.ok) return log(`Prueba 4 → HTTP ${r.status}: ${await detallar(r)}`, "x");
+    log(`   carpeta creada: ${(await r.json()).id}`, "v");
+  }
+
+  const despues = await buscarCarpeta(nombre);
+  if (despues === null) return;
+
+  if (despues.length === 1) {
+    log("VEREDICTO 4: drive.file SÍ devuelve al listar lo que creó. " +
+        "La carpeta del rendidor no se duplica entre sesiones.", "v");
+  } else if (despues.length === 0) {
+    log("VEREDICTO 4: creada pero no listada. Habría que anotar el ID, " +
+        "como con las carpetas del día.", "x");
+  } else {
+    log(`VEREDICTO 4: ${despues.length} carpetas con el mismo nombre — ya se duplicó.`, "x");
+  }
+  log("   Corré esta prueba dos veces, y la segunda desde otra sesión.", "i");
 }
 
 // --- prueba 2B: Picker ---------------------------------------------------

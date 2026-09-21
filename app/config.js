@@ -112,7 +112,20 @@ export const INTENCIONES = [
     descripcion: "Todavía no hay rendición. Se leen los comprobantes sueltos " +
                  "y la herramienta arma el documento con sus totales.",
   },
+  // El tercero no es del área: es quien gastó. Su rendición no nace en la
+  // unidad compartida sino en su propio Drive, porque son sus gastos y puede
+  // ni siquiera tener acceso a la unidad de contabilidad. Llega al área
+  // cuando él comparte la hoja, no antes.
+  {
+    id: "rendir", titulo: "Rendir mis gastos", area: "Quien viaja", propia: true,
+    descripcion: "Desde el teléfono. Fotografía tus comprobantes conforme " +
+                 "los recibes, ponle el número de tu memo, y la herramienta " +
+                 "arma tu rendición en tu propio Drive.",
+  },
 ];
+
+/** Si la intención trabaja contra el Drive de la persona y no contra el del área. */
+export const esPropia = (id) => INTENCIONES.find((i) => i.id === id)?.propia === true;
 
 export const PROCESOS = [
   { id: "caja",     titulo: "Caja chica",      cabecera: "consolidado" },

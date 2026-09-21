@@ -848,3 +848,101 @@ body.dentro #pie { display: flex; }
   font-size: 9px; line-height: 1;
 }
 .tipo-toggle b { font-family: var(--mono); font-weight: 500; font-size: 11.5px; }
+
+/* ── la vista de quien rinde ────────────────────────────────────────── */
+
+/* Se diseña para el pulgar y no para el ratón: pasos en vertical, botones
+   grandes, y ningún desplazamiento horizontal. La misma pantalla en un
+   escritorio se queda estrecha a propósito — una columna de 720px se lee
+   entera, y el recorrido es lineal aunque haya sitio de sobra al lado. */
+.rendidor { background: none; border: none; box-shadow: none; padding: 0; }
+
+.pasos { list-style: none; margin: 0; padding: 0; max-width: 720px; }
+
+.paso {
+  position: relative;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radio); box-shadow: var(--sombra1);
+  padding: 22px 24px; margin-bottom: 14px;
+}
+.paso h3 {
+  margin: 4px 0 8px; font: 700 19px/1.25 var(--display);
+  letter-spacing: -.02em; color: var(--text);
+}
+.paso > .chico { margin: 0 0 14px; max-width: 54ch; }
+.paso > .rotulo { color: var(--accent-texto); }
+
+/* Capturar es la acción, no un detalle: dos botones que se alcanzan con el
+   pulgar sin apuntar. En el móvil ocupan el ancho completo. */
+.capturar { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn.grande { padding: 14px 22px; font-size: 15px; border-radius: var(--radio); }
+.btn.grande svg {
+  width: 20px; height: 20px; fill: none; stroke: currentColor;
+  stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+}
+
+.galeria {
+  display: grid; gap: 8px; margin-top: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+}
+.foto { position: relative; aspect-ratio: 3 / 4; }
+.foto img {
+  width: 100%; height: 100%; object-fit: cover; cursor: zoom-in;
+  border-radius: var(--radio-s); border: 1px solid var(--border2);
+  background: var(--surface2);
+}
+.foto .btn.texto {
+  position: absolute; top: 2px; right: 2px; padding: 0;
+  width: 26px; height: 26px; border-radius: 99px; font-size: 17px;
+  background: rgba(255, 255, 255, .92); color: var(--danger);
+  box-shadow: var(--sombra1);
+}
+
+.tarjetas { display: grid; gap: 10px; margin: 4px 0 16px; }
+
+/* Tarjeta y no fila: en un teléfono, una tabla de diez columnas esconde el
+   importe detrás de un arrastre lateral, que es justo el dato que se revisa. */
+.tarjeta-comp {
+  display: flex; gap: 12px; align-items: flex-start;
+  border: 1px solid var(--border); border-radius: var(--radio);
+  background: var(--surface2); padding: 10px;
+}
+.tarjeta-comp > img {
+  width: 64px; height: 84px; object-fit: cover; cursor: zoom-in; flex: 0 0 auto;
+  border-radius: var(--radio-s); border: 1px solid var(--border2); background: var(--surface);
+}
+.tarjeta-comp .cuerpo { flex: 1 1 auto; min-width: 0; display: grid; gap: 8px; }
+.tarjeta-comp select,
+.tarjeta-comp input {
+  width: 100%; padding: 9px 10px; font: 500 14px var(--ui); color: var(--text);
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--radio-s);
+}
+.tarjeta-comp select:focus,
+.tarjeta-comp input:focus { outline: 2px solid var(--accent-borde); outline-offset: -1px; }
+.tarjeta-comp .falta { background: var(--warn-bg); border-color: var(--warn-borde); }
+.tarjeta-comp .linea { display: grid; gap: 8px; grid-template-columns: 1fr 1fr 1fr; }
+
+.pie-tarjeta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+/* Mismo distintivo que en la tabla del área, con el mismo nowrap: una
+   píldora de radio 99px partida en dos líneas queda como un globo. */
+.pie-tarjeta span {
+  display: inline-block; padding: 3px 9px; border-radius: 99px;
+  border: 1px solid var(--border2); background: var(--surface);
+  font: 600 11px var(--ui); white-space: nowrap;
+}
+.pie-tarjeta .btn.texto { margin-left: auto; padding: 4px 8px; font-size: 12px; }
+
+.hecho { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+.hecho .chico { flex: 1 0 100%; margin: 4px 0 0; }
+
+@media (max-width: 1000px) {
+  .paso { padding: 18px 16px; }
+  .capturar { flex-direction: column; }
+  .capturar .btn.grande { width: 100%; }
+  /* Tres campos en fila caben; el importe se queda con el ancho porque es
+     el que se corrige, y la fecha usa el selector nativo del teléfono. */
+  .tarjeta-comp .linea { grid-template-columns: 1fr 1fr; }
+  .tarjeta-comp .linea input:last-child { grid-column: 1 / -1; }
+  .hecho .btn { flex: 1 1 auto; }
+}

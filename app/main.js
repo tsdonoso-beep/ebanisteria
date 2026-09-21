@@ -8,7 +8,7 @@ import {
   PESTANA_REGISTRO, PESTANA_CONSOLIDADO, HEREDABLES, CARPETA_RAIZ, HOJA,
   getClaveGemini, setClaveGemini, borrarClaveGemini, pareceClaveGemini, enmascarar,
   getProyecto, setProyecto,
-  INTENCIONES, PROCESOS, getModo, setModo,
+  INTENCIONES, PROCESOS, getModo, setModo, esPropia,
   TIPOS, NO_CUENTAN_POR_DEFECTO, etiquetaTipo,
 } from "./config.js";
 import { CABECERA_VACIA, calcular, faltaParaCerrar } from "./rendicion.js";
@@ -23,6 +23,7 @@ import { Cancelado } from "./cola.js";
 import { cuantasRecuerda, olvidarTodo } from "./memoria.js";
 import { estaCompleto, faltantes, claveDe } from "./campos.js";
 import { cruzar, heredar, resumen } from "./conciliacion.js";
+import * as rendidor from "./rendidor.js";
 
 const $ = (s) => document.querySelector(s);
 const crear = (tag, clase, texto) => {
@@ -64,6 +65,9 @@ function avisar(texto, tono = "") {
 
 const ocupado = (v) => {
   trabajando = v;
+  // Se crea acá y no en cada flujo para que «Cancelar» sirva en todos ellos,
+  // incluido el del rendidor, que vive en otro módulo.
+  if (v) abortador ??= new AbortController();
   document.body.classList.toggle("ocupado", v);
   $("#cancelar").hidden = !v;
   if (!v) abortador = null;
@@ -94,6 +98,12 @@ function progreso(hecho, total, detalle) {
  * en «Consolidado» se descartaba en silencio. Desde fuera no se distingue de
  * un botón roto.
  */
+/** Abandonar un lote largo sin recargar. Lo ya leído se conserva. */
+function cancelarLote() {
+  abortador?.abort();
+  avisar("Cancelando al terminar la página en curso…", "trabajando");
+}
+
 function ocupadoAhora() {
   if (!trabajando) return false;
   avisar("Espera a que termine el lote en curso, o cancélalo.", "malo");
@@ -110,10 +120,6 @@ async function alEntrar() {
     $("#quien").textContent = correo;
     $("#quien").classList.toggle("ajeno", !delDominio);
     document.body.classList.add("dentro");
-
-    avisar("Preparando la hoja de registro…", "trabajando");
-    await preparar();
-    previos = await yaRegistrado();
 
     avisar(delDominio ? "" : "Entraste con una cuenta de otro dominio.", delDominio ? "" : "malo");
 
@@ -133,6 +139,25 @@ function alSalir() {
   document.body.classList.remove("dentro");
   $("#quien").textContent = "";
   pintar();
+}
+
+/**
+ * Deja lista la hoja del área, y solo cuando hace falta.
+ *
+ * Antes se hacía siempre al entrar. Pero quien viene a rendir sus propios
+ * gastos puede no tener acceso a esa hoja —no es suya y no tiene por qué—, y
+ * un error de permisos nada más entrar lo dejaba fuera de una herramienta que
+ * sí podía usar. Ahora se prepara al elegir un modo del área.
+ */
+let registroListo = false;
+
+async function asegurarRegistro() {
+  if (registroListo) return;
+  avisar("Preparando la hoja de registro…", "trabajando");
+  await preparar();
+  previos = await yaRegistrado();
+  registroListo = true;
+  avisar("");
 }
 
 // --- elegir el trabajo ---------------------------------------------------
@@ -171,24 +196,46 @@ function pintarEleccion() {
   $("#confirmarModo").disabled = !eligiendo.intencion;
 }
 
-function aplicarModo(nuevo) {
+async function aplicarModo(nuevo) {
   modo = nuevo;
   setModo(nuevo);
 
   const i = INTENCIONES.find((x) => x.id === nuevo.intencion);
   const p = PROCESOS.find((x) => x.id === nuevo.proceso);
+  const propia = esPropia(nuevo.intencion);
 
   $("#modoActivo").hidden = false;
   $("#modoTitulo").textContent = i.titulo;
   $("#modoProceso").textContent = `${i.area} · ${p.titulo}`;
 
+  // La lateral cambia de contenido, no solo de estado: al rendidor no se le
+  // ofrece la unidad compartida ni la hoja del área, que no son suyas.
+  $("#navArea").hidden = propia;
+  $("#navMio").hidden = !propia;
+  $("#recorrido").hidden = propia;
+  $("#recorridoMio").hidden = !propia;
+
   // El área de trabajo se adapta a lo que se vino a hacer.
-  $("#h1Trabajo").textContent = nuevo.intencion === "revalidar"
-    ? "Revalidar la rendición"
+  $("#h1Trabajo").textContent = propia ? "Mi rendición"
+    : nuevo.intencion === "revalidar" ? "Revalidar la rendición"
     : "Digitalizar comprobantes";
-  $("#subTrabajo").textContent = nuevo.intencion === "revalidar"
+  $("#subTrabajo").textContent = propia
+    ? "Fotografía, revisa y guárdala en tu propio Drive."
+    : nuevo.intencion === "revalidar"
     ? `Se cruza el ${p.cabecera} contra los comprobantes escaneados.`
     : "Se leen, se revisan, y la herramienta arma el documento.";
+
+  $("#eleccion").hidden = true;
+
+  if (propia) {
+    $("#zona").hidden = true;
+    $("#pie").hidden = true;
+    $("#rendidor").hidden = false;
+    rendidor.abrir();
+    return;
+  }
+
+  $("#rendidor").hidden = true;
 
   $("#nombreCabecera").textContent = p.cabecera === "memo" ? "Memo" : "Consolidado";
   // Cada rendición empieza limpia: los datos de una no deben colarse en otra.
@@ -196,15 +243,24 @@ function aplicarModo(nuevo) {
   noCuentan = [...NO_CUENTAN_POR_DEFECTO];
   $("#camposCabecera").replaceChildren();
 
-  $("#eleccion").hidden = true;
   $("#zona").hidden = false;
   pintar();
+
+  // El acceso a la hoja del área se comprueba acá, con el modo ya puesto: si
+  // falla, el aviso dice qué modo no se puede usar en vez de un error suelto.
+  try {
+    await asegurarRegistro();
+  } catch (e) {
+    avisar(`No se pudo abrir la hoja del área: ${e.message}`, "malo");
+  }
 }
 
 function volverAElegir() {
   eligiendo = { ...modo };
   $("#eleccion").hidden = false;
   $("#zona").hidden = true;
+  $("#rendidor").hidden = true;
+  $("#pie").hidden = true;
   pintarEleccion();
 }
 
@@ -823,7 +879,7 @@ function pintarBotones() {
 
   // El pie solo aparece cuando hay algo que decidir: vacío, sería una barra
   // muerta ocupando el sitio donde debería estar la invitación a cargar.
-  $("#pie").hidden = !comprobantes.length;
+  $("#pie").hidden = !comprobantes.length || esPropia(modo?.intencion);
   $("#pieTitulo").textContent = listos
     ? `${listos} comprobante${listos === 1 ? "" : "s"} listo${listos === 1 ? "" : "s"} para registrar`
     : incompletos ? "Faltan datos por completar" : "Nada por registrar todavía";
@@ -884,10 +940,7 @@ function montar() {
   $("#entrar").onclick = alEntrar;
   $("#salir").onclick = alSalir;
   $("#registrar").onclick = registrar;
-  $("#cancelar").onclick = () => {
-    abortador?.abort();
-    avisar("Cancelando al terminar la página en curso…", "trabajando");
-  };
+  $("#cancelar").onclick = cancelarLote;
   $("#limpiar").onclick = () => {
     comprobantes.forEach((c) => URL.revokeObjectURL(c.url));
     comprobantes = [];
@@ -941,13 +994,27 @@ function montar() {
   // Cerrar la pestaña con un lote a medias pierde el trabajo: lo cargado vive
   // en memoria y las imágenes nunca llegaron a Drive.
   window.addEventListener("beforeunload", (e) => {
-    if (comprobantes.some((c) => c.estado !== "registrado")) e.preventDefault();
+    if (comprobantes.some((c) => c.estado !== "registrado") ||
+        rendidor.hayPendiente()) e.preventDefault();
   });
 
   // Adónde va a parar lo que se registra. Estaba a un par de clics en Drive
   // y en la práctica nadie lo encontraba.
   $("#verCarpeta").href = `https://drive.google.com/drive/folders/${CARPETA_RAIZ}`;
   $("#verHoja").href = `https://docs.google.com/spreadsheets/d/${HOJA}/edit`;
+
+  // El rendidor vive en su propio módulo y recibe de acá lo compartido:
+  // avisos, el estado de ocupado y el diálogo de la clave. Así no duplica la
+  // barra de progreso ni se entera de cómo funciona esta pantalla.
+  rendidor.montar({
+    avisar,
+    ocupado,
+    ocupadoAhora,
+    progreso,
+    abrirClave,
+    señal: () => abortador?.signal,
+    cancelar: cancelarLote,
+  });
 
   $("#btnAyuda").onclick = () => $("#dlgAyuda").showModal();
   $("#modoActivo").onclick = volverAElegir;

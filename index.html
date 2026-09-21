@@ -32,6 +32,7 @@
   </button>
 
   <nav>
+   <div id="navArea">
     <p class="rotulo grupo">Capturar</p>
     <label class="nav-item principal" for="archivos">
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -72,6 +73,20 @@
       </svg>
       Hoja de registro
     </a>
+   </div>
+
+   <!-- El rendidor no ve la unidad compartida ni la hoja del área: no son
+        suyas y puede no tener acceso. Lo suyo cabe en una sola acción. -->
+   <div id="navMio" hidden>
+    <p class="rotulo grupo">Mi rendición</p>
+    <button class="nav-item" id="miEmpezar" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>
+      </svg>
+      Empezar de nuevo
+    </button>
+   </div>
+
     <p class="rotulo grupo">Cómo funciona</p>
     <button class="nav-item" id="btnAyuda" type="button">
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -120,9 +135,10 @@
       <p class="rotulo">InroScan · Contabilidad</p>
       <h2>Entra con tu cuenta de inroprin.com</h2>
       <p class="sub">
-        Los comprobantes se guardan en la unidad compartida y el registro queda
-        en la hoja del área. La herramienta escribe con tu cuenta, así que cada
-        fila lleva el rastro de quién la registró.
+        La herramienta escribe con tu cuenta, nunca con una cuenta de robot:
+        lo del área queda en la unidad compartida con el rastro de quién lo
+        registró, y lo tuyo queda en tu propio Drive. En la siguiente pantalla
+        eliges a qué viniste.
       </p>
       <button class="btn" id="entrar" type="button">Entrar con Google</button>
     </section>
@@ -210,6 +226,91 @@
       </p>
     </section>
 
+    <!-- La vista de quien gastó. Es la misma lectura con otra postura: se
+         captura de pie y con el teléfono, se lee después, y el resultado nace
+         en el Drive de la propia persona. -->
+    <section id="rendidor" class="rendidor solo-dentro" hidden>
+
+      <ol class="pasos">
+
+        <li class="paso">
+          <p class="rotulo">Paso 1 · Tu memo</p>
+          <h3>¿De qué memo estás rindiendo?</h3>
+          <p class="chico">
+            El número te lo dieron con el dinero. Es lo único que la
+            herramienta no puede adivinar, y es por donde contabilidad va a
+            encontrar tu rendición después.
+          </p>
+          <div class="campos" id="misDatos"></div>
+        </li>
+
+        <li class="paso">
+          <p class="rotulo">Paso 2 · Tus comprobantes</p>
+          <h3>Fotografía conforme te los den</h3>
+          <div class="capturar">
+            <label class="btn grande" for="miCamara">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/>
+                <circle cx="12" cy="13" r="3.5"/>
+              </svg>
+              Tomar foto
+            </label>
+            <input id="miCamara" type="file" accept="image/*" capture="environment" multiple hidden>
+
+            <label class="btn sec grande" for="misArchivos">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5-5 5 5"/><path d="M12 5v12"/>
+              </svg>
+              Subir desde el equipo
+            </label>
+            <input id="misArchivos" type="file" accept="image/*,application/pdf" multiple hidden>
+          </div>
+          <p class="chico" id="miConteo">Todavía no has capturado nada.</p>
+          <div class="galeria" id="miGaleria"></div>
+        </li>
+
+        <li class="paso">
+          <p class="rotulo">Paso 3 · Leer</p>
+          <h3>Que la IA saque los datos</h3>
+          <p class="chico">
+            Se capturan todas primero y se leen de una sola vez, a propósito:
+            en la calle nadie espera medio minuto por foto. Hazlo con señal y
+            con calma.
+          </p>
+          <div class="capturar">
+            <button class="btn" id="miExtraer" type="button" disabled>Extraer con IA</button>
+            <!-- El «Cancelar» del área vive en la barra del pie, que acá no
+                 existe: sin este botón, un lote largo no se podría abandonar
+                 sin recargar y perder las fotos. -->
+            <button class="btn texto malo" id="miCancelar" type="button" hidden>Cancelar</button>
+          </div>
+        </li>
+
+        <li class="paso" id="misResultados" hidden>
+          <p class="rotulo">Paso 4 · Revisa</p>
+          <h3>Corrige lo que salió en ámbar</h3>
+          <div id="misCifras" class="cifras"></div>
+          <div id="misTarjetas" class="tarjetas"></div>
+          <p class="rotulo">Qué sustenta</p>
+          <div id="miSustento" class="tipos"></div>
+        </li>
+
+        <li class="paso" id="miCierre" hidden>
+          <p class="rotulo">Paso 5 · Guardar</p>
+          <h3>Tu rendición, en tu Drive</h3>
+          <p class="chico">
+            Se crea una carpeta con el número de tu memo en tu «Mi unidad»,
+            con las fotos adentro y la hoja de rendición ya sumada. Es tuya:
+            contabilidad la ve cuando tú la compartas.
+          </p>
+          <button class="btn" id="miHoja" type="button" disabled>Crear mi hoja en Drive</button>
+          <p class="chico" id="miFalta" hidden></p>
+          <div class="hecho" id="miHecho" hidden></div>
+        </li>
+
+      </ol>
+    </section>
+
     <!-- Al pie y no arriba: registrar es el último paso del recorrido. Se lee
          la tabla de arriba abajo y la acción espera donde termina la lectura,
          no obligando a volver a subir. -->
@@ -230,7 +331,7 @@
 
 <dialog id="dlgAyuda">
   <h2>El recorrido</h2>
-  <ol class="recorrido">
+  <ol class="recorrido" id="recorrido">
     <li>
       <b>Carga</b>
       Imágenes o PDF. Cada página es un comprobante, y si una hoja trae dos
@@ -260,6 +361,40 @@
       <b>Cuadre <span class="opcional">opcional</span></b>
       Carga el consolidado de caja chica y se cruza contra lo escaneado:
       qué líneas tienen sustento, cuáles no, y qué importes no cuadran.
+    </li>
+  </ol>
+  <!-- El recorrido de quien gastó es otro, y contarle el del área lo
+       confundiría: ni sube a la unidad compartida ni registra nada del área. -->
+  <ol class="recorrido" id="recorridoMio" hidden>
+    <li>
+      <b>Tu memo</b>
+      Escribe el número que te dieron con el dinero, y cuánto recibiste. Es
+      por donde contabilidad va a encontrar después tu rendición.
+    </li>
+    <li>
+      <b>Fotografía</b>
+      Conforme te den los comprobantes. Puedes ir sumando a lo largo del
+      viaje; si repites una foto, la herramienta la reconoce y no la duplica.
+    </li>
+    <li>
+      <b>Extrae</b>
+      Cuando tengas señal, de una sola vez. La IA saca fecha, número y monto
+      de cada uno.
+    </li>
+    <li>
+      <b>Revisa</b>
+      Lo ámbar es lo que no se pudo leer. Corrígelo ahí mismo: son tres
+      campos por comprobante, no una planilla.
+    </li>
+    <li>
+      <b>Guarda</b>
+      Se crea una carpeta con el número de tu memo en tu Drive, con las fotos
+      y la hoja ya sumada. La hoja calcula sola el porcentaje rendido y si
+      debes devolver o te deben reembolsar.
+    </li>
+    <li>
+      <b>Comparte</b>
+      Contabilidad no la ve hasta que tú la compartas. Es tuya.
     </li>
   </ol>
   <div class="botones">

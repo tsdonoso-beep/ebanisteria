@@ -83,7 +83,10 @@ export function calcular(comprobantes, cabecera, noCuentan = NO_CUENTAN_POR_DEFE
 /** Las filas de la rendición, en el orden y las columnas de la plantilla. */
 export function filasDePlantilla(comprobantes) {
   return comprobantes
-    .map((c) => c.campos ?? c)
+    // La huella se conserva al aplanar. Sin esto la fila sale con la clave
+    // «serie-número» y el enlace a la foto se busca por huella: no coinciden
+    // nunca y la rendición queda sin sustento enlazado.
+    .map((c) => (c.campos ? { ...c.campos, huella: c.huella } : c))
     .slice()
     .sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)))
     .map((c) => ({
