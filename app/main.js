@@ -9,7 +9,10 @@ import {
   getClaveGemini, setClaveGemini, borrarClaveGemini, pareceClaveGemini, enmascarar,
   getProyecto, setProyecto,
   INTENCIONES, PROCESOS, getModo, setModo,
+  TIPOS, NO_CUENTAN_POR_DEFECTO, etiquetaTipo,
 } from "./config.js";
+import { CABECERA_VACIA, calcular, faltaParaCerrar } from "./rendicion.js";
+import { generar } from "./hoja-rendicion.js";
 import { entrar, salir, sesion } from "./auth.js";
 import { preparar, agregar, yaRegistrado } from "./sheets.js";
 import { carpetaDelDia, subir, fechaCarpeta } from "./drive.js";
@@ -42,6 +45,10 @@ let abortador = null;
 let modo = null;
 /** Lo elegido en la pantalla de elección, antes de confirmarlo. */
 let eligiendo = { intencion: null, proceso: "caja" };
+/** Cabecera de la rendición en curso, solo en modo digitalizar. */
+let cabecera = CABECERA_VACIA();
+/** Tipos que no suman al sustento. Se ajusta desde la interfaz. */
+let noCuentan = [...NO_CUENTAN_POR_DEFECTO];
 
 // --- avisos --------------------------------------------------------------
 
@@ -184,6 +191,11 @@ function aplicarModo(nuevo) {
     : "Se leen, se revisan, y la herramienta arma el documento.";
 
   $("#nombreCabecera").textContent = p.cabecera === "memo" ? "Memo" : "Consolidado";
+  // Cada rendición empieza limpia: los datos de una no deben colarse en otra.
+  cabecera = CABECERA_VACIA();
+  noCuentan = [...NO_CUENTAN_POR_DEFECTO];
+  $("#camposCabecera").replaceChildren();
+
   $("#eleccion").hidden = true;
   $("#zona").hidden = false;
   pintar();
@@ -424,6 +436,139 @@ async function registrarConsolidado() {
   }
 }
 
+// --- rendición (modo digitalizar) ---------------------------------------
+
+const CAMPOS_CABECERA = [
+  ["memo", "Memorándum N°", true],
+  ["fechaRendicion", "Fecha de rendición", true],
+  ["montoRecibido", "Monto recibido S/", true],
+  ["proyecto", "Proyecto", false],
+  ["nombres", "Nombres", false],
+  ["apellidos", "Apellidos", false],
+  ["dni", "DNI", true],
+  ["origenDestino", "Origen y destino", false],
+  ["periodoDesde", "Viaje desde", true],
+  ["periodoHasta", "Viaje hasta", true],
+];
+
+function pintarCabecera() {
+  const caja = $("#cabecera");
+  const enRendicion = modo?.intencion === "digitalizar";
+  caja.hidden = !enRendicion;
+  if (!enRendicion) return;
+
+  const pendientes = faltaParaCerrar(cabecera, comprobantes);
+  const campos = $("#camposCabecera");
+  if (campos.childElementCount) return;   // no se repinta al teclear
+
+  campos.replaceChildren(...CAMPOS_CABECERA.map(([clave, etiqueta, duro]) => {
+    const d = crear("div", "campo");
+    const l = crear("label", "", etiqueta);
+    l.htmlFor = `cab-${clave}`;
+    const i = crear("input", duro ? "duro" : "");
+    i.id = `cab-${clave}`;
+    i.value = cabecera[clave] ?? "";
+    i.autocomplete = "off";
+    if (clave.startsWith("periodo") || clave === "fechaRendicion") i.type = "date";
+    i.oninput = () => { cabecera[clave] = i.value; pintarRendicion(); pintarBotones(); };
+    d.append(l, i);
+    return d;
+  }));
+  void pendientes;
+}
+
+/**
+ * El panel de la rendición, con los conmutadores de qué sustenta.
+ *
+ * La regla de qué cuenta se muestra y se toca acá en vez de vivir escondida en
+ * el código: es el criterio del que sale el porcentaje, y quien lo revisa
+ * tiene derecho a verlo y a discutirlo.
+ */
+function pintarRendicion() {
+  const caja = $("#panelRendicion");
+  const enRendicion = modo?.intencion === "digitalizar";
+  if (!enRendicion || !comprobantes.length) { caja.hidden = true; return; }
+  caja.hidden = false;
+
+  const listos = comprobantes.filter((c) => c.estado !== "error" && c.campos);
+  const r = calcular(listos, cabecera, noCuentan);
+  caja.replaceChildren();
+
+  const cab = crear("div", "cabecera-cuadre");
+  cab.append(crear("h3", "", `Rendición ${cabecera.memo || "sin número"}`));
+  cab.append(crear("span", "chico",
+    [cabecera.nombres, cabecera.apellidos].filter(Boolean).join(" ") || "sin nombre"));
+  caja.append(cab);
+
+  const cifras = crear("div", "cifras");
+  const tarjeta = (valor, etiqueta, tono = "") => {
+    const d = crear("div", `cifra ${tono}`);
+    d.append(crear("b", "", valor), crear("span", "", etiqueta));
+    return d;
+  };
+  cifras.append(
+    tarjeta(`S/ ${r.recibido}`, "recibido"),
+    tarjeta(`S/ ${r.sustentado}`, "monto rendido", "bien"),
+    tarjeta(r.porcentaje === null ? "—" : `${r.porcentaje}%`, "rendido",
+            r.porcentaje !== null && r.porcentaje < 100 ? "ojo" : ""),
+    tarjeta(`S/ ${Math.abs(Number(r.saldo)).toFixed(2)}`,
+            r.reembolsa ? "a reembolsar" : r.devuelve ? "por devolver" : "saldo",
+            r.reembolsa ? "mal" : ""),
+  );
+  caja.append(cifras);
+
+  caja.append(crear("p", "rotulo", "Qué sustenta"));
+  const tipos = crear("div", "tipos");
+  for (const t of r.porTipo) {
+    const cuenta = !noCuentan.includes(t.tipo);
+    const b = crear("button", "tipo-toggle");
+    b.type = "button";
+    b.setAttribute("aria-pressed", String(cuenta));
+    b.append(
+      crear("span", "marca", cuenta ? "✓" : ""),
+      crear("span", "", `${etiquetaTipo(t.tipo)} · ${t.cuantos}`),
+      crear("b", "", `S/ ${t.importe}`),
+    );
+    b.onclick = () => {
+      noCuentan = cuenta ? [...noCuentan, t.tipo] : noCuentan.filter((x) => x !== t.tipo);
+      pintarRendicion();
+    };
+    tipos.append(b);
+  }
+  caja.append(tipos);
+
+  const falta = faltaParaCerrar(cabecera, listos);
+  const btn = crear("button", "btn", "Generar la rendición en Sheets");
+  btn.type = "button";
+  btn.disabled = trabajando || falta.length > 0;
+  btn.title = falta.length ? `Falta ${falta.join(", ")}` : "Crea la hoja en la carpeta del día";
+  btn.onclick = generarRendicion;
+  caja.append(btn);
+
+  if (falta.length) {
+    caja.append(crear("p", "chico", `Para cerrarla falta ${falta.join(", ")}.`));
+  }
+}
+
+async function generarRendicion() {
+  const listos = comprobantes.filter((c) => c.estado !== "error" && c.campos);
+  ocupado(true);
+  try {
+    avisar("Creando la hoja de la rendición…", "trabajando");
+    const idCarpeta = await carpetaDelDia();
+    const hecho = await generar({ cabecera, comprobantes: listos, noCuentan, idCarpeta });
+
+    avisar(`Rendición creada: ${hecho.nombre}`, "bueno");
+    // Se abre sola: el trabajo termina en esa hoja, no en esta pantalla.
+    window.open(hecho.webViewLink, "_blank", "noopener");
+  } catch (e) {
+    avisar(e.message, "malo");
+  } finally {
+    ocupado(false);
+    pintar();
+  }
+}
+
 // --- tabla de comprobantes ----------------------------------------------
 
 const CAMPOS_TABLA = [
@@ -641,6 +786,8 @@ function pintarResumen() {
 function pintar() {
   $("#filas").replaceChildren(...comprobantes.map(filaDe));
   pintarResumen();
+  pintarCabecera();
+  pintarRendicion();
   $("#tabla").hidden = !comprobantes.length;
   $("#vacio").hidden = comprobantes.length > 0;
   pintarCuadre();

@@ -33,7 +33,7 @@ const apuntaA = (sel, tipo) =>
  * propio estilo completo. Lo que no debe pasar es un <button> sin ninguna,
  * porque entonces no se sabe qué pretende ser.
  */
-const CLASES_PROPIAS = /\b(btn|nav-item|llave|modo-activo|intencion|opcion)\b/;
+const CLASES_PROPIAS = /\b(btn|nav-item|llave|modo-activo|intencion|opcion|tipo-toggle)\b/;
 
 let fallos = 0;
 const check = (ok, bien, mal) => {

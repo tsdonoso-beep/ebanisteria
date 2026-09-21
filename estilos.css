@@ -794,3 +794,57 @@ body.dentro #pie { display: flex; }
   fill: none; stroke: var(--text3); stroke-width: 2;
   stroke-linecap: round; stroke-linejoin: round;
 }
+
+/* ── cabecera de la rendición ───────────────────────────────────────── */
+
+.cabecera-rendicion {
+  margin-top: 18px; padding: 20px 22px;
+  border: 1px solid var(--border); border-radius: var(--radio);
+  background: var(--surface2);
+}
+.campos {
+  display: grid; gap: 12px; margin-top: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+.campo label {
+  display: block; font-family: var(--display); font-size: 10px; font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase; color: var(--text3);
+  margin-bottom: 5px;
+}
+.campo input {
+  width: 100%; padding: 8px 11px; border: 1px solid var(--border2);
+  border-radius: var(--radio-s); font: 400 13px var(--ui);
+  background: var(--surface); color: var(--text);
+  transition: border-color var(--rapido) var(--curva);
+}
+.campo input:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(0,162,152,.14);
+}
+/* Los datos duros de la cabecera también en ancho fijo. */
+.campo input.duro {
+  font-family: var(--mono); font-size: 12.5px;
+}
+.campo.falta input { background: var(--warn-bg); border-color: var(--warn-borde); }
+
+/* ── conmutadores de qué sustenta ───────────────────────────────────── */
+
+.tipos { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 14px; }
+.tipo-toggle {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 13px; border-radius: 99px;
+  border: 1px solid var(--border2); background: var(--surface);
+  font: 500 12px var(--ui); color: var(--text3); cursor: pointer;
+  transition: border-color var(--rapido) var(--curva), color var(--rapido) var(--curva);
+}
+.tipo-toggle:hover { border-color: var(--accent-borde); }
+.tipo-toggle[aria-pressed="true"] {
+  border-color: var(--accent-borde); background: var(--accent-suave);
+  color: var(--accent-texto); font-weight: 600;
+}
+.tipo-toggle .marca {
+  width: 14px; height: 14px; border-radius: 4px; flex: none;
+  border: 1.5px solid currentColor; display: grid; place-items: center;
+  font-size: 9px; line-height: 1;
+}
+.tipo-toggle b { font-family: var(--mono); font-weight: 500; font-size: 11.5px; }
