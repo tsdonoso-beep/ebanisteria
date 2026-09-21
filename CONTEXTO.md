@@ -317,9 +317,19 @@ Y cada número de documento enlaza a su imagen en Drive:
 
 **Dos trampas resueltas acá:**
 
-- El **idioma se fija antes de escribir** (`locale: es_PE`). Las fórmulas se
-  interpretan al escribirse, y el separador —coma o punto y coma— depende del
-  idioma de la hoja. Escribir primero y cambiar el idioma después las deja rotas.
+- El **idioma se acomoda antes de escribir**, y el separador se deduce del
+  idioma que realmente quedó. Las fórmulas se interpretan al escribirse, así
+  que escribir primero y cambiar el idioma después las deja rotas. Dos cosas
+  que se creyeron y eran falsas (ver §10):
+  1. Que `es_PE` era un idioma válido para Sheets. **No lo es** —
+     «Unsupported locale»— así que se intentan candidatos y, si ninguno entra,
+     la hoja se queda como nació. No puede tumbar la rendición: es cosmético.
+  2. Que en Perú el separador de fórmulas era `;`. **Tampoco.** En es_PE el
+     decimal es punto, luego el separador es la coma, igual que en inglés. Se
+     deduce preguntándole al navegador cómo escribe 1,1 en ese idioma, que es
+     la misma regla que usa Sheets y no se queda vieja.
+  Por eso tampoco se intenta `es_ES` ni `es`: en España el decimal es coma y
+  S/ 1234.50 se mostraría 1.234,50. Es un problema de dinero, no de idioma.
 - La hoja se crea **por la API de Drive**, no por la de Sheets, para que nazca
   dentro de la carpeta. Crearla con Sheets la deja en la raíz del Drive de quien
   la hizo, y habría que moverla con una llamada extra que puede fallar sola y
@@ -410,6 +420,8 @@ repetirlo.
 | «El recorrido» negro, luego descuadrado, luego la barra visible pese a `hidden` | **Una sola causa:** la regla `button, .boton { … }` derramaba estilo sobre cualquier botón | Se refactorizó a `.btn` y se creó `comprobaciones.mjs` |
 | La tabla colapsó en escalera | `th` compartía regla con `.rotulo`, que tiene `display: block`; un `th` en block deja de ser celda | Separados, con comentario explicando que la duplicación es a propósito |
 | «Subo el consolidado y no pasa nada» | Sí avisaba, pero el aviso se esconde a los 7 s en lo alto de una página larga | Ahora abre el diálogo de la clave explicando, y marca «falta clave» en la lateral |
+| «Unsupported locale: es_PE» abortaba la rendición entera | Sheets no admite `es_PE`, y el ajuste del idioma —cosmético— lanzaba excepción. La hoja ya estaba creada y las fotos subidas: la persona quedaba con una hoja vacía en su Drive y un error en rojo | El idioma se intenta y no se exige; el separador de las fórmulas se deduce del idioma que quedó |
+| Las fórmulas habrían entrado rotas aunque el idioma se aceptara | Se dio por hecho que en Perú el separador era `;`. En es_PE el decimal es punto, así que el separador es la coma | Se deduce del idioma real con `Intl.NumberFormat`, la misma regla que usa Sheets |
 | El rótulo del paso y su título salían en la misma línea | La clase de estado `hecho` que marca un paso cumplido chocaba con `.hecho`, un componente con `display: flex` (la fila de enlaces de «rendición creada»). El paso se volvía contenedor flex | Renombrada a `.paso.completo`, y comprobación nueva: ningún estado que el código conmute puede existir como regla suelta que fije `display` |
 | La pantalla de elección contradecía a la cáscara | `volverAElegir()` solo cambiaba el centro: el encabezado seguía diciendo «Mi rendición» y la lateral ofrecía «Empezar de nuevo» sobre algo que aún no había empezado | Vuelve todo a neutro: título, ámbar de la lateral, nav y título del documento |
 | La tercera intención quedaba huérfana abajo | `auto-fit, minmax(280px, 1fr)` en 760px de ancho da dos columnas, y la tercera bajaba sola como si fuera de otra categoría | Tres columnas fijas y la sección ensanchada a 1060px; en móvil, una columna y la del rendidor primero |

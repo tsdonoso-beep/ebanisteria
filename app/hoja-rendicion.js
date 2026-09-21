@@ -44,17 +44,81 @@ async function crearHoja(nombre, idCarpeta) {
   return r.json();
 }
 
-/** es_PE: separador «;» en las fórmulas, y fechas y moneda como acá. */
-async function fijarIdioma(idHoja) {
+/**
+ * Idiomas a intentar, en orden de preferencia.
+ *
+ * `es_PE` parecía obvio y Sheets lo rechaza con «Unsupported locale». La
+ * lista de idiomas que admite es de Google y no está publicada entera, así
+ * que se prueban candidatos en vez de apostar por uno; si ninguno entra, la
+ * hoja se queda como nació y abajo se lee cuál quedó.
+ *
+ * No están `es_ES` ni `es`, y la razón es de dinero y no de idioma: en España
+ * el decimal es coma, así que S/ 1234.50 se mostraría como 1.234,50. En Perú
+ * el decimal es punto. Entre una hoja en inglés con los importes bien y una
+ * en castellano con los importes cambiados de forma, la primera es menos
+ * peligrosa.
+ */
+const IDIOMAS = ["es_PE", "es_419"];
+
+/** Una propiedad de la hoja, sin reventar si Sheets la rechaza. */
+async function intentarPropiedad(idHoja, propiedades, campos) {
   const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${idHoja}:batchUpdate`, {
     method: "POST",
     headers: await cabeceras({ "Content-Type": "application/json" }),
-    body: JSON.stringify({ requests: [{ updateSpreadsheetProperties: {
-      properties: { locale: "es_PE", timeZone: "America/Lima" },
-      fields: "locale,timeZone",
-    } }] }),
+    body: JSON.stringify({ requests: [{ updateSpreadsheetProperties: { properties: propiedades, fields: campos } }] }),
   });
+  if (r.ok) return true;
+  console.warn(`Sheets no aceptó ${campos}:`, await motivo(r));
+  return false;
+}
+
+async function idiomaDe(idHoja) {
+  const r = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${idHoja}?fields=properties.locale`,
+    { headers: await cabeceras() });
   if (!r.ok) throw new Error(`Sheets [${r.status}]: ${await motivo(r)}`);
+  return (await r.json()).properties?.locale ?? "en_US";
+}
+
+/**
+ * Deja la hoja en castellano si se deja, y devuelve el idioma que quedó.
+ *
+ * Ninguno de los dos ajustes es imprescindible —la rendición vale igual en
+ * inglés— así que un rechazo no puede tumbar el trabajo entero. Antes sí lo
+ * hacía: la hoja ya estaba creada y las fotos subidas cuando el idioma
+ * fallaba, y la persona se quedaba con una hoja vacía en su Drive y un error
+ * en rojo.
+ */
+async function acomodarIdioma(idHoja) {
+  // La zona horaria va aparte: si el idioma no entra, esta ya quedó puesta.
+  await intentarPropiedad(idHoja, { timeZone: "America/Lima" }, "timeZone");
+  for (const l of IDIOMAS) {
+    if (await intentarPropiedad(idHoja, { locale: l }, "locale")) break;
+  }
+  return idiomaDe(idHoja);
+}
+
+/**
+ * El separador de argumentos de las fórmulas, deducido del idioma.
+ *
+ * Donde el decimal es coma, el separador de argumentos es punto y coma, y al
+ * revés. En vez de mantener una tabla de idiomas se le pregunta al propio
+ * navegador cómo escribe 1,1 en ese idioma: es la misma regla y no se queda
+ * vieja.
+ *
+ * Esto además corrige un error que el fallo del idioma dejó al descubierto:
+ * se daba por hecho que en Perú el separador era «;», y no lo es. En es_PE el
+ * decimal es punto, así que el separador es la coma —como en inglés—. Las
+ * fórmulas escritas con «;» habrían entrado rotas aunque el idioma se hubiera
+ * aceptado.
+ */
+function separadorDe(idioma) {
+  try {
+    return new Intl.NumberFormat(String(idioma).replace("_", "-"))
+      .format(1.1).includes(",") ? ";" : ",";
+  } catch {
+    return ",";
+  }
 }
 
 /**
@@ -65,13 +129,13 @@ async function fijarIdioma(idHoja) {
  * se revisa— un total escrito a mano quedaría mintiendo sin avisar. Con
  * fórmulas, corregir una línea recalcula el total y el porcentaje solos.
  */
-function bloqueCabecera(cab, cuentas, rangos) {
+function bloqueCabecera(cab, cuentas, rangos, s) {
   const periodo = [aPapel(cab.periodoDesde), aPapel(cab.periodoHasta)]
     .filter(Boolean).join(" al ");
 
   // El porcentaje se protege de la división por cero: sin monto recibido, la
   // celda queda vacía en vez de mostrar un error de hoja de cálculo.
-  const pct = `=IF(C4=0;"";TEXT(C5/C4;"0%")&" RENDIDO")`;
+  const pct = `=IF(C4=0${s}""${s}TEXT(C5/C4${s}"0%")&" RENDIDO")`;
 
   return [
     ["MEMORANDUM N°", cab.memo, "", ""],
@@ -111,12 +175,14 @@ export async function generar({ cabecera, comprobantes, noCuentan, idCarpeta, en
 
   const hoja = await crearHoja(nombre, idCarpeta);
 
-  // El idioma se fija ANTES de escribir, y no es cosmético: decide si las
+  // El idioma se acomoda ANTES de escribir, y no es cosmético: decide si las
   // fórmulas se separan con coma o con punto y coma. Escribirlas primero y
   // cambiar el idioma después las dejaría rotas, porque se interpretan al
-  // escribirse. Con es_PE el separador es «;», que es el que usan las de
-  // abajo.
-  await fijarIdioma(hoja.id);
+  // escribirse. Por eso las de abajo usan el separador del idioma que quedó,
+  // en vez de dar por hecho el que se pidió.
+  // Devuelve el idioma que realmente quedó, que puede no ser el pedido.
+  const idioma = await acomodarIdioma(hoja.id);
+  const s = separadorDe(idioma);
 
   // Se calculan antes las filas donde caerá la tabla, porque las fórmulas del
   // total necesitan saber su rango y la cabecera va escrita más arriba.
@@ -131,8 +197,8 @@ export async function generar({ cabecera, comprobantes, noCuentan, idCarpeta, en
         // La columna F guarda si esa línea sustenta. Sumar con SUMIF en vez de
         // fijar el número deja que el criterio siga vivo: cambiar una celda de
         // «no» a «sí» recalcula el monto rendido y el porcentaje al instante.
-        sustentado: `=SUMIF(F${primera}:F${ultima};"sí";E${primera}:E${ultima})`,
-        sinSustentar: `=SUMIF(F${primera}:F${ultima};"no";E${primera}:E${ultima})`,
+        sustentado: `=SUMIF(F${primera}:F${ultima}${s}"sí"${s}E${primera}:E${ultima})`,
+        sinSustentar: `=SUMIF(F${primera}:F${ultima}${s}"no"${s}E${primera}:E${ultima})`,
       }
     : { total: 0, sustentado: 0, sinSustentar: 0 };
 
@@ -143,7 +209,7 @@ export async function generar({ cabecera, comprobantes, noCuentan, idCarpeta, en
       etiquetaTipo(f.tipo),
       // El número enlaza a la imagen en Drive: quien revise la rendición llega
       // al papel con un clic, en vez de buscarlo en una carpeta.
-      enlace ? `=HYPERLINK("${enlace}";"${f.numero}")` : f.numero,
+      enlace ? `=HYPERLINK("${enlace}"${s}"${f.numero}")` : f.numero,
       "S/",
       num(f.importe),
       excluidos.has(f.tipo) ? "no" : "sí",
@@ -155,12 +221,14 @@ export async function generar({ cabecera, comprobantes, noCuentan, idCarpeta, en
     ["", "", "", "", "", ""],
     ["No sustenta", "", "", "S/", rangos.sinSustentar, ""],
     // El saldo también es fórmula, y su signo decide el rótulo en la hoja.
-    [filas.length ? `=IF(C4-E${ultima + 1}>0;"Saldo por devolver";IF(C4-E${ultima + 1}<0;"Reembolso a favor";"Saldo"))` : "Saldo",
+    [filas.length
+      ? `=IF(C4-E${ultima + 1}>0${s}"Saldo por devolver"${s}IF(C4-E${ultima + 1}<0${s}"Reembolso a favor"${s}"Saldo"))`
+      : "Saldo",
      "", "", "S/", filas.length ? `=ABS(C4-E${ultima + 1})` : 0, ""],
   ];
 
   const valores = [
-    ...bloqueCabecera(cabecera, cuentas, rangos),
+    ...bloqueCabecera(cabecera, cuentas, rangos, s),
     ["FECHA", "TIPO DE DOCUMENTO", "N° DOCUMENTO", "", "MONTO", "SUSTENTA"],
     ...filasTabla,
     ...cierre,
