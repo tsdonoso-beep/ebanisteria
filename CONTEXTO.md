@@ -36,9 +36,8 @@ y lo barato de abandonar.** Nada acá debe tener costo de salida.
 
 ## 2. Estado actual
 
-- **Repositorio:** `tsdonoso-beep/inroscan` (renombrado desde `ebanisteria`; el
-  remoto local todavía apunta al nombre viejo y GitHub redirige, así que
-  funciona, pero conviene corregirlo con `git remote set-url`).
+- **Repositorio:** `tsdonoso-beep/inroscan` (renombrado desde `ebanisteria`; GitHub
+  redirige el nombre viejo, pero el remoto local ya apunta al nuevo).
 - **Rama de trabajo:** `claude/vigilant-wozniak-8cgqsw`
 - **Publicado en:** https://tsdonoso-beep.github.io/inroscan/
 - **HEAD:** `e1bc0a0` — «La rendición con fórmulas vivas y el sustento enlazado»
@@ -444,7 +443,6 @@ bajaron al pie, porque registrar es el último paso y no tenía peso visual arri
 4. Hacer determinista el corte de columnas del consolidado, si se comprometen a
    un formato fijo. Hacen falta 2–3 consolidados de meses distintos para
    confirmar que las posiciones son estables.
-5. `git remote set-url origin https://github.com/tsdonoso-beep/inroscan`.
 
 **Nunca ejercitado contra la infraestructura real** (solo verificado en Node):
 crear la hoja, fijar el idioma, escribir las fórmulas y subir las imágenes del
