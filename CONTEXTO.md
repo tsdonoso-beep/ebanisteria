@@ -36,8 +36,10 @@ y lo barato de abandonar.** Nada acá debe tener costo de salida.
 
 ## 2. Estado actual
 
-- **Repositorio:** `tsdonoso-beep/inroscan` (renombrado desde `ebanisteria`; GitHub
-  redirige el nombre viejo, pero el remoto local ya apunta al nuevo).
+- **Repositorio:** `tsdonoso-beep/inroscan` (renombrado desde `ebanisteria`). El remoto
+  local de esta sesión sigue apuntando al nombre viejo —lo repone el
+  entorno en cada arranque— y GitHub redirige, así que el push funciona
+  igual. En un clon nuevo, usar el nombre nuevo.
 - **Rama de trabajo:** `claude/vigilant-wozniak-8cgqsw`
 - **Publicado en:** https://tsdonoso-beep.github.io/inroscan/
 - **HEAD:** `e1bc0a0` — «La rendición con fórmulas vivas y el sustento enlazado»
