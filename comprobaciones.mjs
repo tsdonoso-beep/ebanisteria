@@ -25,6 +25,16 @@ const apuntaA = (sel, tipo) =>
   sel.split(",").map((s) => s.trim().split(/[\s>+~]+/).pop())
      .some((sujeto) => new RegExp(`^${tipo}([.#:\\[]|$)`).test(sujeto));
 
+/**
+ * Clases que un <button> puede llevar en vez de `.btn`.
+ *
+ * Son controles que son botones por accesibilidad pero no son acciones: un
+ * ítem de navegación, una tarjeta de selección, un conmutador. Tienen su
+ * propio estilo completo. Lo que no debe pasar es un <button> sin ninguna,
+ * porque entonces no se sabe qué pretende ser.
+ */
+const CLASES_PROPIAS = /\b(btn|nav-item|llave|modo-activo|intencion|opcion)\b/;
+
 let fallos = 0;
 const check = (ok, bien, mal) => {
   console.log(ok ? "  ✓ " + bien : "  ✗ " + mal);
@@ -54,12 +64,12 @@ check(!porTipo.length, "ninguna regla cuelga del elemento button",
 
 const sinClase = [...html.matchAll(/<button([^>]*)>/g)]
   .map((m) => (m[1].match(/class="([^"]+)"/) || [])[1] || "")
-  .filter((c) => !/\b(btn|nav-item|llave)\b/.test(c));
+  .filter((c) => !CLASES_PROPIAS.test(c));
 check(!sinClase.length, "todo <button> declara qué es",
       `${sinClase.length} botones sin clase`);
 
 const dinamicos = [...js.matchAll(/crear\("button",\s*"([^"]*)"/g)].map((m) => m[1]);
-check(dinamicos.every((c) => /\b(btn|nav-item)\b/.test(c)),
+check(dinamicos.every((c) => CLASES_PROPIAS.test(c)),
       "los botones que crea el código también",
       "creados sin clase: " + dinamicos.filter((c) => !c.includes("btn")));
 

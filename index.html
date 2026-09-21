@@ -23,6 +23,14 @@
     </div>
   </div>
 
+  <button class="modo-activo" id="modoActivo" type="button" hidden>
+    <span>
+      <b id="modoTitulo"></b>
+      <span id="modoProceso"></span>
+    </span>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+  </button>
+
   <nav>
     <p class="rotulo grupo">Capturar</p>
     <label class="nav-item principal" for="archivos">
@@ -46,7 +54,7 @@
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/>
       </svg>
-      Consolidado
+      <span id="nombreCabecera">Consolidado</span>
       <span class="opcional" id="avisoConsolidado">cuadre</span>
     </label>
     <input id="consolidado" type="file" accept="image/*,application/pdf" hidden>
@@ -94,8 +102,8 @@
 
   <header class="solo-dentro">
     <div class="titulo">
-      <h1>Digitalización de comprobantes</h1>
-      <p class="sub">Se leen, se revisan, y recién entonces se registran.</p>
+      <h1 id="h1Trabajo">Digitalización de comprobantes</h1>
+      <p class="sub" id="subTrabajo">Se leen, se revisan, y recién entonces se registran.</p>
     </div>
     <div class="derecha">
       <span id="estadoLote"></span>
@@ -119,7 +127,22 @@
       <button class="btn" id="entrar" type="button">Entrar con Google</button>
     </section>
 
-    <section id="zona" class="solo-dentro">
+    <!-- Se pregunta por el trabajo, no por el tipo de documento: la persona
+         sabe a qué vino, pero puede no saber clasificar el PDF que trae. -->
+    <section id="eleccion" class="eleccion solo-dentro" hidden>
+      <p class="rotulo">Para empezar</p>
+      <h2>¿Qué vas a hacer?</h2>
+      <div class="intenciones" id="intenciones"></div>
+
+      <div class="procesos">
+        <p class="rotulo">Sobre qué proceso</p>
+        <div class="opciones" id="procesos"></div>
+      </div>
+
+      <button class="btn" id="confirmarModo" type="button" disabled>Continuar</button>
+    </section>
+
+    <section id="zona" class="solo-dentro" hidden>
       <div class="barra">
         <!-- autocomplete off: sin esto Chrome rellena el campo con el correo de
              la persona, y el correo acaba registrado como nombre de proyecto. -->

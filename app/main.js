@@ -8,6 +8,7 @@ import {
   PESTANA_REGISTRO, PESTANA_CONSOLIDADO, HEREDABLES, CARPETA_RAIZ, HOJA,
   getClaveGemini, setClaveGemini, borrarClaveGemini, pareceClaveGemini, enmascarar,
   getProyecto, setProyecto,
+  INTENCIONES, PROCESOS, getModo, setModo,
 } from "./config.js";
 import { entrar, salir, sesion } from "./auth.js";
 import { preparar, agregar, yaRegistrado } from "./sheets.js";
@@ -37,6 +38,10 @@ let previos = { huellas: new Set(), claves: new Set() };
 let trabajando = false;
 /** Permite abandonar un lote largo sin recargar la página. */
 let abortador = null;
+/** Qué vino a hacer la persona y sobre qué proceso. */
+let modo = null;
+/** Lo elegido en la pantalla de elección, antes de confirmarlo. */
+let eligiendo = { intencion: null, proceso: "caja" };
 
 // --- avisos --------------------------------------------------------------
 
@@ -104,7 +109,10 @@ async function alEntrar() {
     previos = await yaRegistrado();
 
     avisar(delDominio ? "" : "Entraste con una cuenta de otro dominio.", delDominio ? "" : "malo");
-    pintar();
+
+    const recordado = getModo();
+    if (recordado) aplicarModo(recordado);
+    else { eligiendo = { intencion: null, proceso: "caja" }; volverAElegir(); }
   } catch (e) {
     avisar(e.message, "malo");
   }
@@ -118,6 +126,74 @@ function alSalir() {
   document.body.classList.remove("dentro");
   $("#quien").textContent = "";
   pintar();
+}
+
+// --- elegir el trabajo ---------------------------------------------------
+
+/**
+ * Se pregunta antes de mostrar nada más.
+ *
+ * Revalidar y digitalizar comparten motor pero son trabajos distintos: uno
+ * audita un documento ya cerrado, el otro lo construye. Sin saber a cuál vino
+ * la persona, la pantalla tendría que ofrecer ambos caminos a la vez y ninguno
+ * quedaría claro.
+ */
+function pintarEleccion() {
+  const caja = $("#intenciones");
+  caja.replaceChildren(...INTENCIONES.map((i) => {
+    const b = crear("button", "intencion");
+    b.type = "button";
+    b.setAttribute("aria-pressed", String(eligiendo.intencion === i.id));
+    b.append(
+      crear("span", "rotulo", i.area),
+      crear("b", "", i.titulo),
+      crear("p", "", i.descripcion),
+    );
+    b.onclick = () => { eligiendo.intencion = i.id; pintarEleccion(); };
+    return b;
+  }));
+
+  $("#procesos").replaceChildren(...PROCESOS.map((p) => {
+    const b = crear("button", "opcion", p.titulo);
+    b.type = "button";
+    b.setAttribute("aria-pressed", String(eligiendo.proceso === p.id));
+    b.onclick = () => { eligiendo.proceso = p.id; pintarEleccion(); };
+    return b;
+  }));
+
+  $("#confirmarModo").disabled = !eligiendo.intencion;
+}
+
+function aplicarModo(nuevo) {
+  modo = nuevo;
+  setModo(nuevo);
+
+  const i = INTENCIONES.find((x) => x.id === nuevo.intencion);
+  const p = PROCESOS.find((x) => x.id === nuevo.proceso);
+
+  $("#modoActivo").hidden = false;
+  $("#modoTitulo").textContent = i.titulo;
+  $("#modoProceso").textContent = `${i.area} · ${p.titulo}`;
+
+  // El área de trabajo se adapta a lo que se vino a hacer.
+  $("#h1Trabajo").textContent = nuevo.intencion === "revalidar"
+    ? "Revalidar la rendición"
+    : "Digitalizar comprobantes";
+  $("#subTrabajo").textContent = nuevo.intencion === "revalidar"
+    ? `Se cruza el ${p.cabecera} contra los comprobantes escaneados.`
+    : "Se leen, se revisan, y la herramienta arma el documento.";
+
+  $("#nombreCabecera").textContent = p.cabecera === "memo" ? "Memo" : "Consolidado";
+  $("#eleccion").hidden = true;
+  $("#zona").hidden = false;
+  pintar();
+}
+
+function volverAElegir() {
+  eligiendo = { ...modo };
+  $("#eleccion").hidden = false;
+  $("#zona").hidden = true;
+  pintarEleccion();
 }
 
 // --- carga de comprobantes ----------------------------------------------
@@ -709,6 +785,8 @@ function montar() {
   $("#verHoja").href = `https://docs.google.com/spreadsheets/d/${HOJA}/edit`;
 
   $("#btnAyuda").onclick = () => $("#dlgAyuda").showModal();
+  $("#modoActivo").onclick = volverAElegir;
+  $("#confirmarModo").onclick = () => aplicarModo({ ...eligiendo });
 
   pintarClave();
   pintar();

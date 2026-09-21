@@ -92,6 +92,49 @@ export const HEREDABLES = [
   "clasificacion", "descripcion",
 ];
 
+/**
+ * Qué viene a hacer la persona, y sobre qué proceso.
+ *
+ * Se separa por trabajo y no por tipo de documento: alguien sabe a qué vino,
+ * pero puede no saber cómo clasificar el PDF que tiene delante. Y son trabajos
+ * distintos de verdad —uno audita algo ya cerrado, el otro lo construye—,
+ * aunque el motor de lectura sea el mismo.
+ */
+export const INTENCIONES = [
+  {
+    id: "revalidar", titulo: "Revalidar una rendición", area: "Contabilidad",
+    descripcion: "Ya existe el documento cerrado. Se cruza contra los " +
+                 "comprobantes para ver qué cuadra, qué no tiene sustento y " +
+                 "qué importes no coinciden.",
+  },
+  {
+    id: "digitalizar", titulo: "Digitalizar comprobantes", area: "Administración",
+    descripcion: "Todavía no hay rendición. Se leen los comprobantes sueltos " +
+                 "y la herramienta arma el documento con sus totales.",
+  },
+];
+
+export const PROCESOS = [
+  { id: "caja",     titulo: "Caja chica",      cabecera: "consolidado" },
+  { id: "viaticos", titulo: "Memo de viáticos", cabecera: "memo" },
+];
+
+const CLAVE_MODO = "inroscan_modo";
+
+export function getModo() {
+  try {
+    const m = JSON.parse(localStorage.getItem(CLAVE_MODO) ?? "null");
+    const valida = INTENCIONES.some((i) => i.id === m?.intencion) &&
+                   PROCESOS.some((p) => p.id === m?.proceso);
+    return valida ? m : null;
+  } catch {
+    return null;
+  }
+}
+
+export const setModo = (m) => localStorage.setItem(CLAVE_MODO, JSON.stringify(m));
+export const olvidarModo = () => localStorage.removeItem(CLAVE_MODO);
+
 // --- preferencias por navegador -----------------------------------------
 
 const CLAVE_GEMINI = "inroscan_gemini_key";

@@ -730,3 +730,67 @@ body.dentro #pie { display: flex; }
   border: 1px solid var(--warn-borde); border-radius: var(--radio-s);
   padding: 9px 12px; font-size: 12.5px; font-weight: 500; margin: 0 0 14px;
 }
+
+/* ── elección de trabajo ────────────────────────────────────────────── */
+
+.eleccion { max-width: 760px; margin: 40px auto; padding: 36px 40px; }
+.eleccion h2 {
+  font-size: 22px; font-weight: 700; letter-spacing: -.02em; margin: 6px 0 24px;
+}
+
+.intenciones { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.intencion {
+  text-align: left; padding: 20px 22px; border-radius: var(--radio);
+  border: 1px solid var(--border2); background: var(--surface);
+  cursor: pointer; display: block; width: 100%;
+  transition: border-color var(--rapido) var(--curva),
+              box-shadow var(--rapido) var(--curva),
+              background var(--rapido) var(--curva);
+}
+.intencion:hover { border-color: var(--accent-borde); box-shadow: var(--sombra2); }
+.intencion[aria-pressed="true"] {
+  border-color: var(--accent); background: var(--accent-suave);
+  box-shadow: 0 0 0 3px rgba(0,162,152,.12);
+}
+.intencion .rotulo { margin-bottom: 6px; }
+.intencion b {
+  display: block; font: 700 16px var(--display); letter-spacing: -.02em;
+  color: var(--text); margin-bottom: 8px;
+}
+.intencion p { margin: 0; font-size: 13px; color: var(--text2); line-height: 1.55; }
+
+.procesos { margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--border); }
+.opciones { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.opcion {
+  padding: 9px 18px; border-radius: 99px; border: 1px solid var(--border2);
+  background: var(--surface); color: var(--text2);
+  font: 500 13.5px var(--ui); cursor: pointer;
+  transition: border-color var(--rapido) var(--curva), color var(--rapido) var(--curva);
+}
+.opcion:hover { border-color: var(--accent-borde); }
+.opcion[aria-pressed="true"] {
+  border-color: var(--accent); background: var(--accent-suave);
+  color: var(--accent-texto); font-weight: 600;
+}
+#confirmarModo { margin-top: 26px; }
+
+/* El modo activo en la lateral, que también es cómo se cambia. */
+.modo-activo {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 10px 12px; margin-bottom: 16px; border-radius: var(--radio-s);
+  border: 1px solid var(--border); background: var(--surface2);
+  cursor: pointer; text-align: left;
+  transition: border-color var(--rapido) var(--curva);
+}
+.modo-activo:hover { border-color: var(--accent-borde); }
+.modo-activo b {
+  display: block; font: 600 12.5px var(--ui); color: var(--text);
+}
+.modo-activo span span {
+  font-size: 11px; color: var(--text3);
+}
+.modo-activo svg {
+  width: 15px; height: 15px; margin-left: auto; flex: none;
+  fill: none; stroke: var(--text3); stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round;
+}
