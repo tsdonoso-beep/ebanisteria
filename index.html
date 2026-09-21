@@ -19,7 +19,7 @@
     <img class="lockup" src="img/inroprin.svg" alt="INROPRIN" width="183" height="41">
     <div class="producto">
       <span class="logo-marca">Inro</span><span class="logo-fuerte">Scan</span>
-      <span class="rotulo">Contabilidad</span>
+      <span class="rotulo" id="ambito">Comprobantes</span>
     </div>
   </div>
 
@@ -148,11 +148,19 @@
     <section id="eleccion" class="eleccion solo-dentro" hidden>
       <p class="rotulo">Para empezar</p>
       <h2>¿Qué vas a hacer?</h2>
+      <p class="sub-eleccion">
+        Las tres usan el mismo motor de lectura. Lo que cambia es de quién es
+        el trabajo, y dónde termina guardado.
+      </p>
       <div class="intenciones" id="intenciones"></div>
 
-      <div class="procesos">
+      <div class="procesos" hidden>
         <p class="rotulo">Sobre qué proceso</p>
         <div class="opciones" id="procesos"></div>
+        <p class="chico">
+          Cambia qué documento se espera y cómo se llama en la pantalla, no el
+          motor de lectura.
+        </p>
       </div>
 
       <button class="btn" id="confirmarModo" type="button" disabled>Continuar</button>
@@ -233,8 +241,8 @@
 
       <ol class="pasos">
 
-        <li class="paso">
-          <p class="rotulo">Paso 1 · Tu memo</p>
+        <li class="paso" id="paso1">
+          <p class="rotulo">Tu memo</p>
           <h3>¿De qué memo estás rindiendo?</h3>
           <p class="chico">
             El número te lo dieron con el dinero. Es lo único que la
@@ -242,10 +250,14 @@
             encontrar tu rendición después.
           </p>
           <div class="campos" id="misDatos"></div>
+          <details class="mas-datos">
+            <summary>Más datos del viaje</summary>
+            <div class="campos" id="misDatosExtra"></div>
+          </details>
         </li>
 
-        <li class="paso">
-          <p class="rotulo">Paso 2 · Tus comprobantes</p>
+        <li class="paso" id="paso2">
+          <p class="rotulo">Tus comprobantes</p>
           <h3>Fotografía conforme te los den</h3>
           <div class="capturar">
             <label class="btn grande" for="miCamara">
@@ -269,8 +281,8 @@
           <div class="galeria" id="miGaleria"></div>
         </li>
 
-        <li class="paso">
-          <p class="rotulo">Paso 3 · Leer</p>
+        <li class="paso" id="paso3">
+          <p class="rotulo">Leer</p>
           <h3>Que la IA saque los datos</h3>
           <p class="chico">
             Se capturan todas primero y se leen de una sola vez, a propósito:
@@ -287,7 +299,7 @@
         </li>
 
         <li class="paso" id="misResultados" hidden>
-          <p class="rotulo">Paso 4 · Revisa</p>
+          <p class="rotulo">Revisa</p>
           <h3>Corrige lo que salió en ámbar</h3>
           <div id="misCifras" class="cifras"></div>
           <div id="misTarjetas" class="tarjetas"></div>
@@ -296,7 +308,7 @@
         </li>
 
         <li class="paso" id="miCierre" hidden>
-          <p class="rotulo">Paso 5 · Guardar</p>
+          <p class="rotulo">Guardar</p>
           <h3>Tu rendición, en tu Drive</h3>
           <p class="chico">
             Se crea una carpeta con el número de tu memo en tu «Mi unidad»,

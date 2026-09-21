@@ -163,6 +163,42 @@ async function asegurarRegistro() {
 // --- elegir el trabajo ---------------------------------------------------
 
 /**
+ * Un icono por intención.
+ *
+ * Tres tarjetas de texto obligan a leerlas enteras para distinguirlas. Con
+ * un icono la elección se hace de un vistazo y el texto pasa a confirmar, que
+ * es el orden natural: primero se reconoce, después se lee.
+ */
+const ICONOS = {
+  // Marca de revisión dentro de un marco: algo que ya existe y se comprueba.
+  revalidar: ["M9 11.5l2.5 2.5L18 7.5", "M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"],
+  // Las cuatro esquinas de un escáner: algo que todavía no existe y se crea.
+  digitalizar: ["M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8", "M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8",
+                "M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16", "M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16",
+                "M4 12h16"],
+  // Un teléfono con cámara: dónde ocurre y con qué.
+  rendir: ["M7 2.5h10a1.5 1.5 0 0 1 1.5 1.5v16a1.5 1.5 0 0 1-1.5 1.5H7A1.5 1.5 0 0 1 5.5 20V4A1.5 1.5 0 0 1 7 2.5Z",
+           "M10.5 19h3"],
+};
+
+const icono = (id) => {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  for (const d of ICONOS[id] ?? []) {
+    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    p.setAttribute("d", d);
+    svg.append(p);
+  }
+  if (id === "rendir") {
+    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    c.setAttribute("cx", "12"); c.setAttribute("cy", "10.5"); c.setAttribute("r", "2.6");
+    svg.append(c);
+  }
+  return svg;
+};
+
+/**
  * Se pregunta antes de mostrar nada más.
  *
  * Revalidar y digitalizar comparten motor pero son trabajos distintos: uno
@@ -176,10 +212,19 @@ function pintarEleccion() {
     const b = crear("button", "intencion");
     b.type = "button";
     b.setAttribute("aria-pressed", String(eligiendo.intencion === i.id));
+    const cabeza = crear("span", "cabeza-intencion");
+    cabeza.append(icono(i.id), crear("span", "rotulo", i.area));
+    // Dónde termina guardado es la diferencia de fondo entre las tres, y la
+    // que decide si hace falta permiso sobre la unidad del área. Decirlo en
+    // la tarjeta evita elegir mal y descubrirlo al final.
+    const destino = crear("span", "destino",
+      esPropia(i.id) ? "Queda en tu propio Drive" : "Queda en la unidad del área");
+
     b.append(
-      crear("span", "rotulo", i.area),
+      cabeza,
       crear("b", "", i.titulo),
       crear("p", "", i.descripcion),
+      destino,
     );
     b.onclick = () => { eligiendo.intencion = i.id; pintarEleccion(); };
     return b;
@@ -193,6 +238,10 @@ function pintarEleccion() {
     return b;
   }));
 
+  // El proceso se pregunta después, y no antes: sin saber a qué vino, «caja
+  // chica o memo» es una pregunta sin contexto. Aparece cuando ya hay
+  // intención elegida, que es cuando empieza a significar algo.
+  $("#procesos").closest(".procesos").hidden = !eligiendo.intencion;
   $("#confirmarModo").disabled = !eligiendo.intencion;
 }
 
@@ -207,6 +256,11 @@ async function aplicarModo(nuevo) {
   $("#modoActivo").hidden = false;
   $("#modoTitulo").textContent = i.titulo;
   $("#modoProceso").textContent = `${i.area} · ${p.titulo}`;
+
+  // La lateral decía «Contabilidad» aunque el modo fuera el del rendidor. Un
+  // rótulo fijo que contradice lo que hay en pantalla es peor que no tenerlo.
+  $("#ambito").textContent = i.area;
+  document.title = `InroScan · ${i.titulo}`;
 
   // La lateral cambia de contenido, no solo de estado: al rendidor no se le
   // ofrece la unidad compartida ni la hoja del área, que no son suyas.
@@ -255,12 +309,28 @@ async function aplicarModo(nuevo) {
   }
 }
 
+/**
+ * Vuelve a la elección, y devuelve la cáscara a neutro.
+ *
+ * Antes solo cambiaba el centro: la pantalla preguntaba «¿qué vas a hacer?»
+ * mientras el encabezado ya afirmaba «Mi rendición» y la lateral ofrecía
+ * «Empezar de nuevo» sobre algo que aún no había empezado. Tres sitios
+ * respondiendo cosas distintas a la vez.
+ */
 function volverAElegir() {
   eligiendo = { ...modo };
   $("#eleccion").hidden = false;
   $("#zona").hidden = true;
   $("#rendidor").hidden = true;
   $("#pie").hidden = true;
+  $("#modoActivo").hidden = true;
+  $("#navArea").hidden = true;
+  $("#navMio").hidden = true;
+  $("#h1Trabajo").textContent = "InroScan";
+  $("#subTrabajo").textContent = "Elige a qué viniste: la herramienta cambia según eso.";
+  $("#ambito").textContent = "Comprobantes";
+  $("#estadoLote").textContent = "";
+  document.title = "InroScan";
   pintarEleccion();
 }
 

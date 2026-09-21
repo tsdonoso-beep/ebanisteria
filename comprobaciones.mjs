@@ -78,6 +78,16 @@ check(dinamicos.every((c) => CLASES_PROPIAS.test(c)),
       "los botones que crea el código también",
       "creados sin clase: " + dinamicos.filter((c) => !c.includes("btn")));
 
+// Un estado que el código conmuta y que además existe como componente con
+// estilo propio se pisan: «hecho» marcaba el paso cumplido y, de paso, lo
+// volvía flex, poniendo el rótulo y el título en la misma línea.
+const estados = [...new Set([...js.matchAll(/classList\.(?:toggle|add)\("([\w-]+)"/g)].map((m) => m[1]))];
+const disponen = new Set(reglas.filter((r) => /display\s*:/.test(r.cuerpo))
+  .flatMap((r) => r.sel.split(",").map((s) => s.trim())));
+const chocan = estados.filter((c) => disponen.has(`.${c}`));
+check(!chocan.length, `los ${estados.length} estados que conmuta el código no chocan con ningún componente`,
+      "clases que son estado y componente a la vez: " + chocan.join(", "));
+
 console.log("\nDetalles que se deforman");
 
 const pildora = reglas.find((r) => r.sel === "td.estado span");

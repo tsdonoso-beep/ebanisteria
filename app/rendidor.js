@@ -194,11 +194,22 @@ async function guardar() {
 
 // --- pintado -------------------------------------------------------------
 
+/**
+ * Lo que hay que pedir para poder cerrar, y lo demás.
+ *
+ * Nueve campos antes de dejar fotografiar es pedirle una ficha a alguien que
+ * está de pie con una boleta en la mano. Solo los cuatro que la rendición no
+ * puede cerrar sin ellos quedan a la vista; el resto se pliega, porque son
+ * datos que se completan sentado y al final.
+ */
 const CAMPOS = [
   ["memo", "N° de memo", "text", true],
   ["montoRecibido", "Monto recibido S/", "number", true],
   ["nombres", "Nombres", "text", true],
   ["apellidos", "Apellidos", "text", true],
+];
+
+const CAMPOS_EXTRA = [
   ["dni", "DNI", "text", false],
   ["proyecto", "Proyecto", "text", false],
   ["origenDestino", "Origen y destino", "text", false],
@@ -210,7 +221,7 @@ function pintarDatos() {
   const caja = $("#misDatos");
   if (caja.childElementCount) return;   // no se repinta mientras se teclea
 
-  caja.replaceChildren(...CAMPOS.map(([clave, etiqueta, tipo, obligatorio]) => {
+  const campo = ([clave, etiqueta, tipo, obligatorio]) => {
     const d = crear("div", "campo");
     const l = crear("label", "", etiqueta + (obligatorio ? " *" : ""));
     l.htmlFor = `mi-${clave}`;
@@ -226,10 +237,14 @@ function pintarDatos() {
       recordarDatos();
       pintarCifras();
       pintarCierre();
+      pintarPasos();
     };
     d.append(l, i);
     return d;
-  }));
+  };
+
+  caja.replaceChildren(...CAMPOS.map(campo));
+  $("#misDatosExtra").replaceChildren(...CAMPOS_EXTRA.map(campo));
 }
 
 function pintarGaleria() {
@@ -413,6 +428,28 @@ function pintarCierre() {
     crear("p", "chico", "Compártela con contabilidad desde el botón «Compartir» de Google."));
 }
 
+/**
+ * Marca cada paso como hecho.
+ *
+ * Cinco tarjetas del mismo peso visual no dicen en cuál estás. Con la marca,
+ * el recorrido se lee de un vistazo y se ve qué falta sin tener que
+ * releerlo entero.
+ */
+function pintarPasos() {
+  const completo = (c) => leidos.length && !faltantes(c.campos).length && c.campos.tipo;
+  const estado = {
+    paso1: Boolean(String(datos.memo).trim() && Number(datos.montoRecibido) &&
+                   (datos.nombres || datos.apellidos)),
+    paso2: capturas.length > 0 || leidos.length > 0,
+    paso3: leidos.length > 0,
+    misResultados: leidos.length > 0 && leidos.every(completo),
+    miCierre: Boolean(hoja),
+  };
+  for (const [id, hecho] of Object.entries(estado)) {
+    $(`#${id}`)?.classList.toggle("completo", hecho);
+  }
+}
+
 export function pintar() {
   pintarDatos();
   pintarGaleria();
@@ -420,6 +457,7 @@ export function pintar() {
   $("#misResultados").hidden = !hay;
   $("#miCierre").hidden = !hay;
   if (hay) { pintarCifras(); pintarTarjetas(); pintarSustento(); pintarCierre(); }
+  pintarPasos();
 }
 
 // --- montaje -------------------------------------------------------------
@@ -447,6 +485,7 @@ export function montar(prestado) {
     noCuentan = [...NO_CUENTAN_POR_DEFECTO];
     recordarDatos();
     $("#misDatos").replaceChildren();
+    $("#misDatosExtra").replaceChildren();
     pintar();
   };
 }
@@ -466,6 +505,7 @@ export function abrir() {
   }
   if (!datos.fechaRendicion) datos.fechaRendicion = fechaCarpeta();
   $("#misDatos").replaceChildren();
+  $("#misDatosExtra").replaceChildren();
   pintar();
 }
 
