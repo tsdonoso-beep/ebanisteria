@@ -55,6 +55,37 @@ export const COLUMNAS_CONSOLIDADO = [
   "Clasificación", "Descripción", "Importe", "Clave", "Origen", "Registró",
 ];
 
+/**
+ * Tipos de documento, y si cuentan para el monto rendido.
+ *
+ * La distinción sale de la plantilla de rendición real: en el memo 675, doce
+ * comprobantes suman S/ 347.50 pero el «monto rendido» es S/ 242.00 — la
+ * diferencia son exactamente las dos declaraciones juradas. Una DJ no es
+ * documento válido ante SUNAT, así que se digitaliza y se archiva igual, pero
+ * no suma al porcentaje que se rinde.
+ *
+ * `cuenta` es el valor de partida, no una ley: cada rendición puede cambiarlo
+ * desde la interfaz, porque la regla varía según quién la revise.
+ */
+export const TIPOS = [
+  { id: "FACTURA",              etiqueta: "Factura",              cuenta: true },
+  { id: "BOLETA",               etiqueta: "Boleta",               cuenta: true },
+  { id: "TICKET",               etiqueta: "Ticket",               cuenta: true },
+  { id: "RHE",                  etiqueta: "Recibo por honorarios", cuenta: true },
+  { id: "PLANILLA DE MOVILIDAD", etiqueta: "Planilla de movilidad", cuenta: true },
+  { id: "NOTA DE CRÉDITO",      etiqueta: "Nota de crédito",      cuenta: true },
+  // Declaración jurada: se digitaliza y se archiva, pero no sustenta ante
+  // SUNAT. Es la única que arranca fuera del cómputo.
+  { id: "DJ",                   etiqueta: "Declaración jurada",   cuenta: false },
+  { id: "OTRO",                 etiqueta: "Otro",                 cuenta: false },
+];
+
+/** Los tipos que por defecto no suman al monto rendido. */
+export const NO_CUENTAN_POR_DEFECTO = TIPOS.filter((t) => !t.cuenta).map((t) => t.id);
+
+export const etiquetaTipo = (id) =>
+  TIPOS.find((t) => t.id === id)?.etiqueta ?? id ?? "";
+
 /** Campos que se heredan del consolidado al comprobante cuando cuadran. */
 export const HEREDABLES = [
   "proyecto", "area", "responsable", "categoria", "subcategoria",

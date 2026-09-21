@@ -16,6 +16,7 @@ import { aPaginas } from "./paginas.js";
 import { textoDePdf } from "./texto-pdf.js";
 import { leer, leerConsolidado, probarClave, reiniciarAprendizaje, ocrDesactivado, ritmoActual } from "./lectura.js";
 import { Cancelado } from "./cola.js";
+import { cuantasRecuerda, olvidarTodo } from "./memoria.js";
 import { estaCompleto, faltantes, claveDe } from "./campos.js";
 import { cruzar, heredar, resumen } from "./conciliacion.js";
 
@@ -163,6 +164,7 @@ async function recibirComprobantes(archivos) {
           deVarios: leidos.length > 1,
           campos: { ...r.campos, proyecto: r.campos.proyecto || proyecto },
           via: r.via,
+          deMemoria: r.deMemoria,
           sospechaVarios: r.sospechaVarios,
           estado: "listo",
         });
@@ -534,7 +536,8 @@ function pintarResumen() {
   const registrados = vivos.filter((c) => c.estado === "registrado").length;
   const porCompletar = vivos.filter((c) => c.estado === "listo" && !estaCompleto(c.campos)).length;
   const listos = vivos.filter((c) => c.estado === "listo" && estaCompleto(c.campos)).length;
-  const conIA = vivos.filter((c) => c.via === "ia").length;
+  const conIA = vivos.filter((c) => c.via === "ia" && !c.deMemoria).length;
+  const deMemoria = vivos.filter((c) => c.deMemoria).length;
   const suma = vivos.reduce((t, c) => t + (Number(c.campos?.importe) || 0), 0);
 
   const tarjeta = (valor, titulo, nota, tono = "") => {
@@ -546,7 +549,8 @@ function pintarResumen() {
   caja.replaceChildren(
     tarjeta(vivos.length, "Comprobantes", `S/ ${suma.toFixed(2)} en total`),
     tarjeta(conIA, "Leídos con IA",
-            conIA ? "el OCR no resolvió estos"
+            deMemoria ? `${deMemoria} recuperados de lecturas anteriores`
+            : conIA ? "el OCR no resolvió estos"
             : !getClaveGemini() ? "sin clave configurada: solo OCR"
             : "los resolvió el OCR, sin cuota",
             !conIA && !getClaveGemini() && porCompletar ? "ojo" : ""),

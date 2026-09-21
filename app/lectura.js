@@ -13,6 +13,7 @@ import {
 } from "./campos.js";
 import { PROMPT_COMPROBANTE, PROMPT_CONSOLIDADO, PROMPT_CONSOLIDADO_TEXTO } from "./prompt.js";
 import { conPlazo, esperar, Ritmo, Cancelado } from "./cola.js";
+import { recordar, anotar } from "./memoria.js";
 
 /** Plazo del OCR de una página. Pasado eso se da por muerto el trabajador. */
 const PLAZO_OCR = 45_000;
@@ -195,6 +196,15 @@ export const ocrDesactivado = () => !valeLaPenaElOcr();
 export async function leer(pagina, avisar, señal) {
   if (señal?.aborted) throw new Cancelado();
 
+  // Lo ya leído antes no se vuelve a leer: ni OCR ni cuota. Un papel no cambia
+  // de contenido entre una subida y otra, así que releerlo es pagar dos veces
+  // por la misma respuesta.
+  const recordado = recordar(pagina.huella);
+  if (recordado) {
+    avisar?.("Ya se había leído: se recupera sin gastar cuota.");
+    return [recordado];
+  }
+
   let texto = "";
   if (valeLaPenaElOcr()) {
     try {
@@ -210,6 +220,7 @@ export async function leer(pagina, avisar, señal) {
 
   if (!varios && estaCompleto(porOcr)) {
     anotarOcr(true);
+    anotar(pagina.huella, porOcr, "ocr");
     return [{ campos: porOcr, via: "ocr" }];
   }
   anotarOcr(false);
@@ -232,13 +243,20 @@ export async function leer(pagina, avisar, señal) {
 
   const leidos = unificarRepetidos(lista.map(desdeIA));
 
-  return leidos.map((deIA, i) => {
+  const salida = leidos.map((deIA, i) => {
     // Lo del OCR solo se funde cuando hay un único comprobante: si la imagen
     // trae dos, el RUC o el total que sacó el OCR pertenecen a uno de los dos,
     // y repartirlos a todos inventaría datos.
     const campos = leidos.length === 1 ? fundir(deIA, porOcr) : deIA;
     return { campos, via: estaCompleto(campos) ? "ia" : "parcial" };
   });
+
+  // Solo se recuerda la imagen de un comprobante único. Cuando trae varios, la
+  // huella es del archivo y no de cada uno: recuperarla devolvería el primero
+  // y perdería los demás en silencio, que es peor que volver a leer.
+  if (salida.length === 1) anotar(pagina.huella, salida[0].campos, salida[0].via);
+
+  return salida;
 }
 
 /**

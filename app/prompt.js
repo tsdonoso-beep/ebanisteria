@@ -18,7 +18,7 @@ Devuelve ÚNICAMENTE un array JSON, sin explicación ni bloque de código:
 
 [
   {
-    "tipo": "BOLETA | FACTURA | TICKET | RHE | PLANILLA DE MOVILIDAD | NOTA DE CRÉDITO | OTRO",
+    "tipo": "BOLETA | FACTURA | TICKET | RHE | PLANILLA DE MOVILIDAD | DJ | NOTA DE CRÉDITO | OTRO",
     "serie": "",
     "numero": "",
     "fecha": "",
@@ -53,6 +53,11 @@ Reglas:
   usa la de emisión.
 - "ruc" son los once dígitos del EMISOR, no los del cliente. Empieza en 10, 15,
   17 o 20, y está junto al nombre y la dirección de la empresa, arriba.
+- «DJ» es una DECLARACIÓN JURADA: un formato donde la persona declara de su
+  puño un gasto sin comprobante —una propina, un mototaxi, un peaje sin
+  boleta—. No tiene RUC ni serie; suele llevar el DNI de quien declara y su
+  firma. Léela igual que cualquier otra: la herramienta la archiva aunque
+  después no la cuente para el sustento.
 - En una PLANILLA DE MOVILIDAD no hay empresa emisora: el documento lo firma
   una persona que hizo los viajes, y su nombre es el dato que importa. Ponlo
   en "proveedor" y también en "responsable" —por ejemplo IVAN CAMACHO BRITO o

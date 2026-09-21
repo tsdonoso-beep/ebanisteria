@@ -75,6 +75,9 @@ export function fechaISO(texto) {
 }
 
 function tipoDe(texto, serie) {
+  // La declaración jurada se reconoce por su encabezado y no tiene ni RUC ni
+  // serie, así que hay que buscarla antes de intentar deducir por la serie.
+  if (/DECLARACI[OÓ]N\s+JURADA/i.test(texto)) return "DJ";
   // El orden importa: «planilla de movilidad» y «recibo por honorarios» son
   // frases propias, y buscarlas antes evita que un «FACTURA» suelto en el pie
   // de página se lleve la clasificación.
@@ -151,7 +154,7 @@ export function pareceVarios(texto) {
 /** Primera lectura: solo expresiones regulares sobre el texto del OCR. */
 export function leerTexto(texto) {
   const c = VACIO();
-  const plano = String(texto ?? "").replace(/ /g, " ");
+  const plano = String(texto ?? "").replace(/\u00a0/g, " ");
 
   // Los RUC peruanos empiezan en 10, 15, 17 o 20 y tienen once dígitos.
   c.ruc = plano.match(/\b((?:10|15|17|20)\d{9})\b/)?.[1] ?? "";
