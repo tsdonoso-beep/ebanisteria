@@ -8,7 +8,7 @@ import {
   PESTANA_REGISTRO, PESTANA_CONSOLIDADO, HEREDABLES, CARPETA_RAIZ, HOJA,
   getClaveGemini, setClaveGemini, borrarClaveGemini, pareceClaveGemini, enmascarar,
   getProyecto, setProyecto,
-  INTENCIONES, PROCESOS, getModo, setModo, esPropia,
+  INTENCIONES, PROCESOS, getModo, setModo, esPropia, VERSION,
   TIPOS, NO_CUENTAN_POR_DEFECTO, etiquetaTipo,
 } from "./config.js";
 import { CABECERA_VACIA, calcular, faltaParaCerrar } from "./rendicion.js";
@@ -1089,6 +1089,8 @@ function montar() {
   $("#btnAyuda").onclick = () => $("#dlgAyuda").showModal();
   $("#modoActivo").onclick = volverAElegir;
   $("#confirmarModo").onclick = () => aplicarModo({ ...eligiendo });
+
+  $("#version").textContent = `v ${VERSION}`;
 
   pintarClave();
   pintar();

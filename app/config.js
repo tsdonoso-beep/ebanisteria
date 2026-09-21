@@ -6,6 +6,20 @@
 // consentimiento en modo Internal, los permisos de la unidad compartida, y el
 // alcance drive.file, que solo da acceso a lo que esta aplicación crea.
 
+/**
+ * Versión visible de lo que se está ejecutando.
+ *
+ * GitHub Pages sirve los archivos con diez minutos de caché, así que después
+ * de publicar un arreglo el navegador puede seguir ejecutando el módulo
+ * anterior un rato largo —y el error corregido reaparece, idéntico, sin que
+ * nadie entienda por qué—. Con la versión a la vista, «¿estoy viendo lo
+ * nuevo?» se contesta mirando la lateral en vez de adivinando.
+ *
+ * Se sube a mano en cada publicación. Es manual a propósito: no hay paso de
+ * compilación que la genere, y una versión que miente es peor que ninguna.
+ */
+export const VERSION = "2026-09-21b";
+
 export const CLIENT_ID =
   "951030676058-igp95ct69p03lcpt02vtjs79t5dmsrij.apps.googleusercontent.com";
 
