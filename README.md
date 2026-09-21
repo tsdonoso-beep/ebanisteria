@@ -7,7 +7,13 @@ Es **temporal y deliberadamente**: sirve para generar confianza mientras avanza
 la adopción de INRO VIÁTICOS. Por eso no comparte datos con viáticos todavía y
 se apoya en configuración antes que en una base de datos.
 
-Estado: **validando la arquitectura**. Todavía no hay aplicación.
+Estado: **en uso de prueba**. Publicada en
+<https://tsdonoso-beep.github.io/inroscan/>.
+
+> El contexto completo del proyecto —el proceso real, cada decisión con su
+> razón, lo verificado contra documentos reales, los errores y sus causas, y
+> lo que queda abierto— está en **[CONTEXTO.md](CONTEXTO.md)**. Ese es el
+> documento de traspaso; este README es el resumen.
 
 ---
 
