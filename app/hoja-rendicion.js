@@ -8,6 +8,7 @@
 import { cabeceras, motivo, sesion } from "./auth.js";
 import { etiquetaTipo } from "./config.js";
 import { calcular, filasDePlantilla } from "./rendicion.js";
+import { protegerTexto } from "./campos.js";
 
 const UNIDADES = "supportsAllDrives=true&includeItemsFromAllDrives=true";
 
@@ -152,7 +153,11 @@ function bloqueCabecera(cab, cuentas, rangos, s) {
 
   // Un campo sin llenar tiene que quedar en blanco, no escribir «null»: en una
   // hoja que alguien firma, esa palabra parece un error del sistema.
-  const t = (v) => (v == null ? "" : String(v));
+  // Y protegido: son campos que la persona tipeó a mano, y la hoja se escribe
+  // con USER_ENTERED para que las fórmulas de abajo funcionen — lo mismo que
+  // le permite eso a la app se lo permite a cualquier texto que empiece con
+  // =, +, - o @.
+  const t = (v) => protegerTexto(v == null ? "" : String(v));
 
   return [
     ["MEMORANDUM N°", t(cab.memo), "", ""],
@@ -228,9 +233,13 @@ export async function generar({ cabecera, comprobantes, noCuentan, idCarpeta, en
       // El número enlaza a la imagen en Drive: quien revise la rendición llega
       // al papel con un clic, en vez de buscarlo en una carpeta.
       enlace ? `=HYPERLINK("${enlace}"${s}"${f.numero}")` : f.numero,
-      f.proveedor,
-      f.descripcion,
-      f.categoria,
+      // Proveedor y concepto son lo que el OCR o la IA leyeron del papel:
+      // texto libre que hay que proteger antes de escribirlo (ver campos.js).
+      // La categoría casi siempre ya viene del catálogo cerrado, pero se
+      // protege igual porque no siempre pasó por normalizarCategoria.
+      protegerTexto(f.proveedor),
+      protegerTexto(f.descripcion),
+      protegerTexto(f.categoria),
       "S/",
       num(f.importe),
       excluidos.has(f.tipo) ? "no" : "sí",

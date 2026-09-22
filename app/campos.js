@@ -30,6 +30,26 @@ export const numero = (s) => {
 };
 
 /**
+ * Neutraliza un valor que Sheets interpretaría como fórmula.
+ *
+ * Se escribe con `valueInputOption=USER_ENTERED` porque las fórmulas vivas de
+ * la rendición lo necesitan (ver hoja-rendicion.js), pero eso mismo hace que
+ * CUALQUIER celda —no solo las que la app arma como fórmula— se interprete
+ * así si su texto empieza con =, +, - o @. El proveedor y el concepto salen
+ * de lo que dice el papel: un comprobante armado a propósito con
+ * «=HYPERLINK("http://…")» como nombre de proveedor se ejecutaría en la hoja
+ * de quien lo revise. Anteponer un apóstrofo es la forma estándar de decirle
+ * a Sheets «esto es texto, aunque empiece así» — el apóstrofo no se muestra.
+ *
+ * No se aplica a los importes (van como número de verdad, no como texto) ni
+ * a las fórmulas que la propia app construye en hoja-rendicion.js.
+ */
+export function protegerTexto(v) {
+  const s = String(v ?? "");
+  return /^[=+\-@]/.test(s) ? `'${s}` : s;
+}
+
+/**
  * Identidad de un comprobante, para cruzarlo con la línea del consolidado.
  *
  * Se normaliza fuerte —sin ceros a la izquierda, sin guiones, sin mayúsculas—

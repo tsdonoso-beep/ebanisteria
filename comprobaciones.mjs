@@ -102,5 +102,27 @@ const faltan = ids.filter((i) => !html.includes(`id="${i}"`));
 check(!faltan.length, `los ${ids.length} ids que busca el código existen`,
       "ids que faltan: " + faltan);
 
+console.log("\nSeguridad");
+
+// La hoja se escribe con USER_ENTERED para que las fórmulas vivas funcionen,
+// y eso mismo hace que cualquier celda —no solo las que la app arma como
+// fórmula— se interprete así si el texto de un proveedor o un concepto
+// llegara a empezar con =, +, - o @. protegerTexto() es la defensa; esto
+// comprueba que sigue neutralizando los cuatro casos sin tocar el texto normal.
+const { protegerTexto } = await import(new URL("app/campos.js", import.meta.url));
+const casosInyeccion = [
+  ["=HYPERLINK(\"http://x\")", true],
+  ["+59 999 999 999", true],
+  ["-cmd|' /c calc'!A1", true],
+  ["@SUM(1,1)", true],
+  ["Ferretería El Sol S.A.C.", false],
+  ["", false],
+];
+const falloInyeccion = casosInyeccion.filter(([valor, debeProtegerse]) =>
+  protegerTexto(valor).startsWith("'") !== debeProtegerse);
+check(!falloInyeccion.length,
+      "protegerTexto neutraliza =, +, - y @ sin tocar el texto normal",
+      "protegerTexto no se comporta como se espera con: " + falloInyeccion.map(([v]) => v).join(" | "));
+
 console.log(fallos ? `\n${fallos} fallo${fallos > 1 ? "s" : ""}\n` : "\nTodo en orden\n");
 process.exit(fallos ? 1 : 0);

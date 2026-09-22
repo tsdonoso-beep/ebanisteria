@@ -21,7 +21,7 @@ import { textoDePdf } from "./texto-pdf.js";
 import { leer, leerConsolidado, probarClave, reiniciarAprendizaje, ocrDesactivado, ritmoActual } from "./lectura.js";
 import { Cancelado } from "./cola.js";
 import { cuantasRecuerda, olvidarTodo } from "./memoria.js";
-import { estaCompleto, faltantes, claveDe } from "./campos.js";
+import { estaCompleto, faltantes, claveDe, protegerTexto } from "./campos.js";
 import { cruzar, heredar, resumen } from "./conciliacion.js";
 import * as rendidor from "./rendidor.js";
 
@@ -479,12 +479,13 @@ function recalcularCruce() {
 
 function filaDeComprobante(c, enlace) {
   const k = c.campos;
+  const p = protegerTexto;
   return [
-    new Date().toISOString(), k.fecha, k.tipo, k.serie, k.numero, k.ruc, k.proveedor,
-    k.proyecto, k.area, k.responsable, k.categoria, k.subcategoria,
-    k.clasificacion, k.descripcion,
+    new Date().toISOString(), k.fecha, k.tipo, k.serie, k.numero, k.ruc, p(k.proveedor),
+    p(k.proyecto), p(k.area), p(k.responsable), k.categoria, p(k.subcategoria),
+    p(k.clasificacion), p(k.descripcion),
     k.moneda, k.subtotal, k.igv, k.importe,
-    enlace, c.origen, c.pagina, c.via, c.huella, claveDe(k), sesion()?.correo ?? "",
+    enlace, p(c.origen), c.pagina, c.via, c.huella, claveDe(k), sesion()?.correo ?? "",
   ];
 }
 
@@ -546,11 +547,15 @@ async function registrarConsolidado() {
   try {
     const ahora = new Date().toISOString();
     const quien = sesion()?.correo ?? "";
+    const p = protegerTexto;
+    // A diferencia del comprobante, aquí la categoría también sale cruda de
+    // la IA que leyó el consolidado (no pasa por normalizarCategoria), así
+    // que se protege igual que el resto del texto libre.
     const filas = rendicion.lineas.map((l) => [
-      ahora, rendicion.caja, rendicion.administrador, l.fecha, l.tipo,
-      l.numeroCrudo || claveDe(l), l.proveedor, l.proyecto, l.area, l.responsable,
-      l.categoria, l.subcategoria, l.clasificacion, l.descripcion, l.importe,
-      claveDe(l), rendicion.origen, quien,
+      ahora, p(rendicion.caja), p(rendicion.administrador), l.fecha, l.tipo,
+      l.numeroCrudo || claveDe(l), p(l.proveedor), p(l.proyecto), p(l.area), p(l.responsable),
+      p(l.categoria), p(l.subcategoria), p(l.clasificacion), p(l.descripcion), l.importe,
+      claveDe(l), p(rendicion.origen), quien,
     ]);
 
     await agregar(PESTANA_CONSOLIDADO, filas);

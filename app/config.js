@@ -18,7 +18,7 @@
  * Se sube a mano en cada publicación. Es manual a propósito: no hay paso de
  * compilación que la genere, y una versión que miente es peor que ninguna.
  */
-export const VERSION = "2026-09-21c";
+export const VERSION = "2026-09-22";
 
 export const CLIENT_ID =
   "951030676058-igp95ct69p03lcpt02vtjs79t5dmsrij.apps.googleusercontent.com";
